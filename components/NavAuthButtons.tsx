@@ -1,4 +1,5 @@
 "use client"
+
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/lib/auth/AuthProvider"
@@ -39,16 +40,20 @@ export function NavAuthButtons() {
 
   return (
     <div className="flex items-center gap-3">
-      <Link href="/login">
-        <Button variant="ghost" className="hidden md:flex text-slate-mid hover:text-ink text-sm">
-          Sign in
-        </Button>
-      </Link>
-      <Link href="/signup">
-        <Button className="bg-ink hover:bg-ink-light text-white font-semibold text-sm px-5 py-2 rounded-lg">
-          Get started →
-        </Button>
-      </Link>
+      <button
+        type="button"
+        onClick={() => router.push("/login")}
+        className="hidden md:inline-flex text-slate-mid hover:text-ink text-sm font-medium bg-transparent border-none cursor-pointer"
+      >
+        Sign in
+      </button>
+      <button
+        type="button"
+        onClick={() => router.push("/signup")}
+        className="bg-ink hover:bg-ink-light text-white font-semibold text-sm px-5 py-2 rounded-lg border-none cursor-pointer"
+      >
+        Get started →
+      </button>
     </div>
   )
 }
