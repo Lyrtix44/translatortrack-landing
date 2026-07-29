@@ -1,7 +1,9 @@
 import type { Metadata } from "next"
 import "./globals.css"
+
 import { Navbar } from "@/components/Navbar"
 import { Footer } from "@/components/Footer"
+import { AuthProvider } from "@/lib/auth/AuthProvider"
 
 export const metadata: Metadata = {
   title: "TranslatorTrack — Project & Invoice Manager for Freelance Translators",
@@ -23,9 +25,11 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body>
-        <Navbar />
-        <main>{children}</main>
-        <Footer />
+        <AuthProvider>
+          <Navbar />
+          <main>{children}</main>
+          <Footer />
+        </AuthProvider>
       </body>
     </html>
   )

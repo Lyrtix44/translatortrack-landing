@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { NavAuthButtons } from "@/components/NavAuthButtons"
 
 export function Navbar() {
   return (
@@ -21,12 +21,14 @@ export function Navbar() {
           >
             Features
           </Link>
+
           <Link
             href="#pricing"
             className="text-slate-mid hover:text-ink text-sm font-medium transition-colors"
           >
             Pricing
           </Link>
+
           <Link
             href="#faq"
             className="text-slate-mid hover:text-ink text-sm font-medium transition-colors"
@@ -35,20 +37,7 @@ export function Navbar() {
           </Link>
         </div>
 
-        {/* CTA */}
-        <div className="flex items-center gap-3">
-          <Button
-            variant="ghost"
-            className="hidden md:flex text-slate-mid hover:text-ink text-sm"
-          >
-            Sign in
-          </Button>
-          <Button
-            className="bg-ink hover:bg-ink-light text-white font-semibold text-sm px-5 py-2 rounded-lg"
-          >
-            Get early access →
-          </Button>
-        </div>
+        <NavAuthButtons />
 
       </div>
     </nav>

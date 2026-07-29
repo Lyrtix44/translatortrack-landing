@@ -1,0 +1,105 @@
+// app/api/parse-project/route.ts
+import { NextRequest, NextResponse } from "next/server"
+import { createClient } from "@/lib/supabase/server"
+import { ParsedProjectSchema } from "@/lib/ai/schemas"
+import { buildSystemPrompt } from "@/lib/ai/prompts"
+
+const RESPONSE_SCHEMA = {
+  type: "json_schema" as const,
+  json_schema: {
+    name: "parsed_project",
+    strict: true,
+    schema: {
+      type: "object",
+      properties: {
+        title: { type: "string" },
+        source_language: { type: "string" },
+        target_language: { type: "string" },
+        word_count: { type: ["number", "null"] },
+        deadline: { type: ["string", "null"] },
+        rate_hint: { type: ["number", "null"] },
+        client_name_guess: { type: ["string", "null"] },
+        confidence_notes: { type: "string" },
+      },
+      required: [
+        "title", "source_language", "target_language", "word_count",
+        "deadline", "rate_hint", "client_name_guess", "confidence_notes",
+      ],
+      additionalProperties: false,
+    },
+  },
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    // 1. Auth check — never let an unauthenticated request spend your AI budget
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // 2. Validate the incoming request
+    const { message } = await request.json()
+    if (!message || typeof message !== "string" || message.trim().length < 10) {
+      return NextResponse.json(
+        { error: "Please paste a bit more detail from the client's message." },
+        { status: 400 }
+      )
+    }
+    if (message.length > 4000) {
+      return NextResponse.json(
+        { error: "That message is a little long — try trimming it to the key details." },
+        { status: 400 }
+      )
+    }
+
+    // 3. Call the AI
+    const today = new Date().toISOString().split("T")[0]
+
+    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [
+          { role: "system", content: buildSystemPrompt(today) },
+          { role: "user", content: message },
+        ],
+        response_format: RESPONSE_SCHEMA,
+        temperature: 0.1,   // low temperature: we want consistent extraction, not creativity
+        max_tokens: 500,
+      }),
+    })
+
+    if (!aiResponse.ok) {
+      console.error("OpenAI API error:", await aiResponse.text())
+      return NextResponse.json(
+        { error: "AI parsing failed. You can still fill in the form manually below." },
+        { status: 502 }
+      )
+    }
+
+    const aiData = await aiResponse.json()
+    const rawContent = aiData.choices[0].message.content
+
+    // 4. Validate the AI's output before trusting it — never skip this
+    const parsed = ParsedProjectSchema.safeParse(JSON.parse(rawContent))
+    if (!parsed.success) {
+      console.error("AI returned data that failed validation:", parsed.error)
+      return NextResponse.json(
+        { error: "AI returned unexpected data. Please fill in manually." },
+        { status: 502 }
+      )
+    }
+
+    return NextResponse.json({ result: parsed.data })
+
+  } catch (error) {
+    console.error("parse-project error:", error)
+    return NextResponse.json({ error: "Something went wrong." }, { status: 500 })
+  }
+}
