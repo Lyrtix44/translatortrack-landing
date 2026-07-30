@@ -3,31 +3,31 @@ import { NextRequest, NextResponse } from "next/server"
 import { createClient } from "@/lib/supabase/server"
 import { ParsedProjectSchema } from "@/lib/ai/schemas"
 import { buildSystemPrompt } from "@/lib/ai/prompts"
+import { checkAndLogAiUsage } from "@/lib/ai/rate-limit"
 
-const RESPONSE_SCHEMA = {
-  type: "json_schema" as const,
-  json_schema: {
-    name: "parsed_project",
-    strict: true,
-    schema: {
-      type: "object",
-      properties: {
-        title: { type: "string" },
-        source_language: { type: "string" },
-        target_language: { type: "string" },
-        word_count: { type: ["number", "null"] },
-        deadline: { type: ["string", "null"] },
-        rate_hint: { type: ["number", "null"] },
-        client_name_guess: { type: ["string", "null"] },
-        confidence_notes: { type: "string" },
-      },
-      required: [
-        "title", "source_language", "target_language", "word_count",
-        "deadline", "rate_hint", "client_name_guess", "confidence_notes",
-      ],
-      additionalProperties: false,
-    },
+// Gemini Structured Output Schema
+const GEMINI_RESPONSE_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    title: { type: "STRING" },
+    source_language: { type: "STRING" },
+    target_language: { type: "STRING" },
+    word_count: { type: "INTEGER", nullable: true },
+    deadline: { type: "STRING", nullable: true },
+    rate_hint: { type: "NUMBER", nullable: true },
+    client_name_guess: { type: "STRING", nullable: true },
+    confidence_notes: { type: "STRING" },
   },
+  required: [
+    "title",
+    "source_language",
+    "target_language",
+    "word_count",
+    "deadline",
+    "rate_hint",
+    "client_name_guess",
+    "confidence_notes",
+  ],
 }
 
 export async function POST(request: NextRequest) {
@@ -39,7 +39,16 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    // 2. Validate the incoming request
+    // 2. Rate limit check — enforce daily quota per plan tier
+    const { allowed } = await checkAndLogAiUsage(user.id, "parse_project")
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "You've reached today's AI parsing limit. Try again tomorrow, or upgrade for more." },
+        { status: 429 }
+      )
+    }
+
+    // 3. Validate the incoming request payload
     const { message } = await request.json()
     if (!message || typeof message !== "string" || message.trim().length < 10) {
       return NextResponse.json(
@@ -54,29 +63,39 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 3. Call the AI
-    const today = new Date().toISOString().split("T")[0]
+    // 4. Call the Gemini API
+    const apiKey = process.env.GEMINI_API_KEY
+    if (!apiKey) {
+      console.error("Missing GEMINI_API_KEY environment variable")
+      return NextResponse.json({ error: "AI service configuration error." }, { status: 500 })
+    }
 
-    const aiResponse = await fetch("https://api.openai.com/v1/chat/completions", {
+    const today = new Date().toISOString().split("T")[0]
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent?key=${apiKey}`
+
+    const aiResponse = await fetch(url, {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${process.env.OPENAI_API_KEY}`,
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: "gpt-4o-mini",
-        messages: [
-          { role: "system", content: buildSystemPrompt(today) },
-          { role: "user", content: message },
+        system_instruction: {
+          parts: [{ text: buildSystemPrompt(today) }],
+        },
+        contents: [
+          {
+            parts: [{ text: message }],
+          },
         ],
-        response_format: RESPONSE_SCHEMA,
-        temperature: 0.1,   // low temperature: we want consistent extraction, not creativity
-        max_tokens: 500,
+        generationConfig: {
+          response_mime_type: "application/json",
+          response_schema: GEMINI_RESPONSE_SCHEMA,
+          temperature: 0.1, // low temperature: consistent extraction, not creativity
+          maxOutputTokens: 500,
+        },
       }),
     })
 
     if (!aiResponse.ok) {
-      console.error("OpenAI API error:", await aiResponse.text())
+      console.error("Gemini API error:", await aiResponse.text())
       return NextResponse.json(
         { error: "AI parsing failed. You can still fill in the form manually below." },
         { status: 502 }
@@ -84,9 +103,9 @@ export async function POST(request: NextRequest) {
     }
 
     const aiData = await aiResponse.json()
-    const rawContent = aiData.choices[0].message.content
+    const rawContent = aiData.candidates[0].content.parts[0].text
 
-    // 4. Validate the AI's output before trusting it — never skip this
+    // 5. Validate the AI's output with Zod before trusting it
     const parsed = ParsedProjectSchema.safeParse(JSON.parse(rawContent))
     if (!parsed.success) {
       console.error("AI returned data that failed validation:", parsed.error)
