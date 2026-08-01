@@ -93,10 +93,12 @@ export function NewProjectForm({ clients }: { clients: Client[] }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
+
     if (!clientId || !title || !wordCount || !rate) return
 
     setSubmitting(true)
-    const project = await createProjectAction({
+
+    const { project, error } = await createProjectAction({
       client_id: clientId,
       title,
       source_language: sourceLang,
@@ -106,9 +108,17 @@ export function NewProjectForm({ clients }: { clients: Client[] }) {
       currency: clients.find((c) => c.id === clientId)?.currency || "USD",
       deadline: deadline ? new Date(deadline).toISOString() : null,
     })
+
     setSubmitting(false)
 
-    if (project) router.push("/dashboard")
+    if (error) {
+      setParseError(error)
+      return
+    }
+
+    if (project) {
+      router.push("/dashboard")
+    }
   }
 
   const invoiceTotal =
