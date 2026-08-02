@@ -94,7 +94,7 @@ export default async function PricingPage() {
                 <UpgradeButton
                   priceId={plan.priceId}
                   planName={plan.name}
-                  userEmail={user.email}
+                  userEmail={user.email ?? ""}
                   userId={user.id}
                 />
               ) : null}
