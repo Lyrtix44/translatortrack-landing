@@ -1,6 +1,6 @@
 "use server"
 
-import { requireAuth } from "@/lib/auth"
+import { requireAuth } from "@/lib/auth/require-auth"
 import { updateProjectStatus } from "@/lib/db/projects"
 import { revalidatePath } from "next/cache"
 
