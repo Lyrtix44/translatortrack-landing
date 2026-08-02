@@ -4,6 +4,7 @@ import "./globals.css"
 import { Navbar } from "@/components/Navbar"
 import { Footer } from "@/components/Footer"
 import { AuthProvider } from "@/lib/auth/AuthProvider"
+import { Toaster } from "@/components/ui/sonner"
 
 export const metadata: Metadata = {
   title: "TranslatorTrack — Project & Invoice Manager for Freelance Translators",
@@ -29,6 +30,7 @@ export default function RootLayout({
           <Navbar />
           <main>{children}</main>
           <Footer />
+          <Toaster position="top-right" />
         </AuthProvider>
       </body>
     </html>

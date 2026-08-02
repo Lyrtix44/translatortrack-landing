@@ -25,6 +25,7 @@ export async function createProjectAction(
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Without this check, anyone could call this Server Action directly and create projects without being signed in.
   if (!user) {
     return {
       project: null,

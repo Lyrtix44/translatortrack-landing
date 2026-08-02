@@ -4,6 +4,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { createProjectAction } from "@/app/actions/projects"
+import { toast } from "sonner"
 
 interface Client {
   id: string
@@ -44,48 +45,72 @@ export function NewProjectForm({ clients }: { clients: Client[] }) {
 
   async function handleParse() {
     if (briefText.trim().length < 10) {
-      setParseError("Paste a bit more detail from the client's message.")
+      toast.error("Paste a bit more detail from the client's message.")
       return
     }
+
     setParsing(true)
     setParseError(null)
     setAiNote(null)
 
     try {
-      const res = await fetch("/api/parse-project", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: briefText }),
-      })
-      const data = await res.json()
+      await toast.promise(
+        fetch("/api/parse-project", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ message: briefText }),
+        }).then(async (res) => {
+          const data = await res.json()
 
-      if (!res.ok) {
-        setParseError(data.error || "Couldn't parse that — try filling in manually below.")
-        return
+          if (!res.ok) {
+            throw new Error(
+              data.error || "Couldn't parse that — try filling in manually below."
+            )
+          }
+
+          const result: ParsedProject = data.result
+
+          // Pre-fill editable fields
+          setTitle(result.title)
+          setSourceLang(result.source_language)
+          setTargetLang(result.target_language)
+
+          if (result.word_count) setWordCount(String(result.word_count))
+          if (result.rate_hint) setRate(String(result.rate_hint))
+          if (result.deadline) setDeadline(result.deadline)
+
+          if (
+            result.confidence_notes &&
+            result.confidence_notes !== "None"
+          ) {
+            setAiNote(result.confidence_notes)
+          }
+
+          // Match client if possible
+          if (result.client_name_guess) {
+            const match = clients.find(
+              (c) =>
+                c.name.toLowerCase() ===
+                result.client_name_guess?.toLowerCase()
+            )
+
+            if (match) setClientId(match.id)
+          }
+
+          return result
+        }),
+        {
+          loading: "Reading the message...",
+          success: "Parsed — review the fields below.",
+          error: (err) => err.message,
+        }
+      )
+    } catch (err) {
+      if (err instanceof Error) {
+        setParseError(err.message)
       }
-
-      const result: ParsedProject = data.result
-
-      // Pre-fill editable fields
-      setTitle(result.title)
-      setSourceLang(result.source_language)
-      setTargetLang(result.target_language)
-      if (result.word_count) setWordCount(String(result.word_count))
-      if (result.rate_hint) setRate(String(result.rate_hint))
-      if (result.deadline) setDeadline(result.deadline)
-      if (result.confidence_notes && result.confidence_notes !== "None") {
-        setAiNote(result.confidence_notes)
-      }
-
-      // Try exact matching client name guess to existing client
-      if (result.client_name_guess) {
-        const match = clients.find(
-          (c) => c.name.toLowerCase() === result.client_name_guess?.toLowerCase()
-        )
-        if (match) setClientId(match.id)
-      }
-    } catch {
-      setParseError("Something went wrong reaching the AI. Try filling in manually below.")
     } finally {
       setParsing(false)
     }

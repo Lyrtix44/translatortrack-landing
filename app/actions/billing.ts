@@ -11,6 +11,7 @@ export async function manageBillingAction() {
     data: { user },
   } = await supabase.auth.getUser()
 
+  // Without this check, anyone could call this Server Action directly and attempt to access the billing portal without being signed in.
   if (!user) redirect("/login")
 
   const { data: profile } = await supabase
