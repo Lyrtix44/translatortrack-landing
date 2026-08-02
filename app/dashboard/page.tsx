@@ -2,7 +2,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { getProjects } from "@/lib/db/projects"
 import { getClients } from "@/lib/db/clients"
-import { ProjectStatusSelect } from "@/components/dashboard/ProjectStatusSelect"
+import { ProjectStatusSelect } from "@/components/dashboard/ProjectStatusSelect.server"
 import { EmptyProjectsState } from "@/components/dashboard/EmptyProjectsState"
 import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist"
 import Link from "next/link"

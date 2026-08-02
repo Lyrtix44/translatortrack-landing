@@ -4,7 +4,7 @@ import { requireAuth } from "@/lib/auth/require-auth"
 import { updateProjectStatus } from "@/lib/db/projects"
 import { revalidatePath } from "next/cache"
 
-type ProjectStatus = "draft" | "in_progress" | "delivered" | "invoiced" | "paid"
+import type { ProjectStatus } from "@/lib/db/projects"
 
 export async function updateProjectStatusAction(
   projectId: string,
