@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import Link from "next/link"
 
 const plans = [
   {
@@ -145,16 +146,17 @@ export function PricingSection() {
               </ul>
 
               {/* CTA */}
-              <Button
+              <a
+                href="/signup"
                 className={cn(
-                  "w-full font-semibold",
+                  "inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-semibold w-full text-center",
                   plan.isPopular
                     ? "bg-amber hover:bg-amber-light text-ink"
                     : "bg-ink hover:bg-ink-light text-white"
                 )}
               >
                 {plan.cta}
-              </Button>
+              </a>
             </div>
           ))}
         </div>
