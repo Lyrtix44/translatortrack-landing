@@ -17,7 +17,6 @@ export async function createClientAction(
 
   const name = (formData.get("name") as string)?.trim()
   const email = formData.get("email") as string
-  const defaultRate = formData.get("default_rate") as string
 
   if (!name || name.length < 2) {
     return { error: "Client name is required.", success: false }
@@ -26,8 +25,6 @@ export async function createClientAction(
   const client = await createClientRecord({
     name,
     email: email || null,
-    default_rate: defaultRate ? parseFloat(defaultRate) : null,
-    currency: "USD",
   })
 
   if (!client) {
