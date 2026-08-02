@@ -1,6 +1,6 @@
 // app/actions/clients.ts
 "use server"
-import { createClient as createClientRecord } from "@/lib/db/clients"
+import { createClientRecord } from "@/lib/db/clients"
 import { requireAuth } from "@/lib/auth/require-auth"
 import { revalidatePath } from "next/cache"
 
