@@ -9,8 +9,8 @@ import { toast } from "sonner"
 interface Client {
   id: string
   name: string
-  default_rate: number | null
-  currency: string
+  default_rate?: number | null
+  currency?: string
 }
 
 interface ParsedProject {
