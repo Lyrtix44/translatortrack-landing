@@ -22,8 +22,9 @@ export function InvoiceCalculator() {
   useEffect(() => {
     const calculated = wordCount * rate
     setTotal(calculated)
-    // Manual time: 5–15 min per invoice, we use 8 as average
-    setManualMinutes(8)
+    // Manual time scales: base 5 min + 1 min per 1000 words (avg freelancer reality)
+    const estimatedManualMin = Math.round(5 + wordCount / 1000)
+    setManualMinutes(estimatedManualMin)
   }, [wordCount, rate])
 
   function handlePairChange(index: number) {
@@ -139,17 +140,17 @@ export function InvoiceCalculator() {
               <p className="text-green-600 text-xs font-semibold uppercase tracking-wider mb-1">
                 With TranslatorTrack
               </p>
-              <p className="text-green-700 font-bold text-lg">3 sec</p>
+              <p className="text-green-700 font-bold text-lg">&lt; 5 sec</p>
               <p className="text-green-600 text-xs">automatic</p>
             </div>
           </div>
 
           <p className="text-xs text-slate-mid text-center">
-            At 20 projects/month, that&apos;s{" "}
+            At 20 invoices/month, that's{" "}
             <span className="text-ink font-semibold">
-              {(manualMinutes * 20 / 60).toFixed(0)}+ hours
+              {(manualMinutes * 20 / 60).toFixed(1)} hours
             </span>{" "}
-            saved per month.
+            saved.
           </p>
         </div>
 
