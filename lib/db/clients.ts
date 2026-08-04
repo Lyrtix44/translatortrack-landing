@@ -14,6 +14,8 @@ export interface Client {
   company: string | null
   address: string | null
   notes: string | null
+  default_rate: number | null
+  currency: string
   created_at: string
   updated_at: string
 }
