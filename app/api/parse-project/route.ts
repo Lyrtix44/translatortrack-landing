@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
           response_mime_type: "application/json",
           response_schema: GEMINI_RESPONSE_SCHEMA,
           temperature: 0.1,
-          maxOutputTokens: 500,
+          maxOutputTokens: 2000,
         },
       }),
     })
