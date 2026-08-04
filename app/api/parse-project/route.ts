@@ -104,9 +104,27 @@ export async function POST(request: NextRequest) {
 
     const aiData = await aiResponse.json()
     const rawContent = aiData.candidates[0].content.parts[0].text
+    console.log("RAW GEMINI RESPONSE:", rawContent)
 
     // 5. Validate the AI's output with Zod before trusting it
-    const parsed = ParsedProjectSchema.safeParse(JSON.parse(rawContent))
+        const aiData = await aiResponse.json()
+    const rawContent = aiData.candidates[0].content.parts[0].text
+
+    // 5. Validate the AI's output with Zod before trusting it
+    let parsedJson;
+    try {
+      parsedJson = JSON.parse(rawContent)
+    } catch (parseError) {
+      console.error("JSON Parse Failed. Raw content:", rawContent)
+      console.error("Parse error:", parseError)
+      return NextResponse.json(
+        { error: "AI returned invalid format. Please fill in manually." },
+        { status: 502 }
+      )
+    }
+
+    const parsed = ParsedProjectSchema.safeParse(parsedJson)
+    if (!parsed.success) {
     if (!parsed.success) {
       console.error("AI returned data that failed validation:", parsed.error)
       return NextResponse.json(
