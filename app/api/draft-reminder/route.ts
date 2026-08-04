@@ -44,7 +44,7 @@ Keep it professional, friendly, and under 150 words. Do not include subject line
     }
 
     // Call Gemini streaming API using streamGenerateContent
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse&key=${apiKey}`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:streamGenerateContent?alt=sse&key=${apiKey}`
 
     const geminiRes = await fetch(url, {
       method: "POST",

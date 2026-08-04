@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     }
 
     const today = new Date().toISOString().split("T")[0]
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
 
     const aiResponse = await fetch(url, {
       method: "POST",
