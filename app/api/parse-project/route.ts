@@ -71,7 +71,7 @@ export async function POST(request: NextRequest) {
     }
 
     const today = new Date().toISOString().split("T")[0]
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${apiKey}`
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`
 
     const aiResponse = await fetch(url, {
       method: "POST",
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
         generationConfig: {
           response_mime_type: "application/json",
           response_schema: GEMINI_RESPONSE_SCHEMA,
-          temperature: 0.1, // low temperature: consistent extraction, not creativity
+          temperature: 0.1,
           maxOutputTokens: 500,
         },
       }),
@@ -103,11 +103,6 @@ export async function POST(request: NextRequest) {
     }
 
     const aiData = await aiResponse.json()
-    const rawContent = aiData.candidates[0].content.parts[0].text
-    console.log("RAW GEMINI RESPONSE:", rawContent)
-
-    // 5. Validate the AI's output with Zod before trusting it
-        const aiData = await aiResponse.json()
     const rawContent = aiData.candidates[0].content.parts[0].text
 
     // 5. Validate the AI's output with Zod before trusting it
@@ -124,7 +119,6 @@ export async function POST(request: NextRequest) {
     }
 
     const parsed = ParsedProjectSchema.safeParse(parsedJson)
-    if (!parsed.success) {
     if (!parsed.success) {
       console.error("AI returned data that failed validation:", parsed.error)
       return NextResponse.json(
