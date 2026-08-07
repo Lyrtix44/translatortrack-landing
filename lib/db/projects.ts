@@ -1,3 +1,4 @@
+```ts
 import { createClient } from "@/lib/supabase/server"
 
 // Types
@@ -54,6 +55,7 @@ export async function getProjects(filters?: {
   if (filters?.status) {
     query = query.eq("status", filters.status)
   }
+
   if (filters?.client_id) {
     query = query.eq("client_id", filters.client_id)
   }
@@ -87,10 +89,15 @@ export async function getProjectById(id: string): Promise<Project | null> {
 }
 
 // CREATE: Add a new project
-export async function createProject(input: CreateProjectInput): Promise<Project | null> {
+export async function createProject(
+  input: CreateProjectInput
+): Promise<Project | null> {
   const supabase = await createClient()
 
-  const { data: { user } } = await supabase.auth.getUser()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+
   if (!user) throw new Error("Not authenticated")
 
   const { data, error } = await supabase
@@ -163,20 +170,164 @@ export async function getProjectStats() {
     .select("word_count, invoice_total, status, deadline, created_at")
 
   if (error || !data) {
-    return { totalWordsThisMonth: 0, revenueThisMonth: 0, activeProjects: 0, overdueProjects: 0 }
+    return {
+      totalWordsThisMonth: 0,
+      revenueThisMonth: 0,
+      activeProjects: 0,
+      overdueProjects: 0,
+    }
   }
 
-  const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
-  const thisMonth = data.filter(p => p.created_at >= monthStart)
+  const monthStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    1
+  ).toISOString()
+
+  const thisMonth = data.filter((p) => p.created_at >= monthStart)
 
   return {
-    totalWordsThisMonth: thisMonth.reduce((sum, p) => sum + p.word_count, 0),
-    revenueThisMonth: thisMonth.reduce((sum, p) => sum + Number(p.invoice_total), 0),
-    activeProjects: data.filter(p => p.status === "in_progress").length,
-    overdueProjects: data.filter(p =>
-      p.deadline &&
-      new Date(p.deadline) < now &&
-      p.status !== "paid"
+    totalWordsThisMonth: thisMonth.reduce(
+      (sum, p) => sum + p.word_count,
+      0
+    ),
+    revenueThisMonth: thisMonth.reduce(
+      (sum, p) => sum + Number(p.invoice_total),
+      0
+    ),
+    activeProjects: data.filter(
+      (p) => p.status === "in_progress"
+    ).length,
+    overdueProjects: data.filter(
+      (p) =>
+        p.deadline &&
+        new Date(p.deadline) < now &&
+        p.status !== "paid"
     ).length,
   }
 }
+
+// DASHBOARD: Stats with month-over-month changes
+export async function getDashboardStats() {
+  const supabase = await createClient()
+  const now = new Date()
+
+  const monthStart = new Date(
+    now.getFullYear(),
+    now.getMonth(),
+    1
+  )
+
+  const lastMonthStart = new Date(
+    now.getFullYear(),
+    now.getMonth() - 1,
+    1
+  )
+
+  const { data } = await supabase
+    .from("projects")
+    .select("word_count, invoice_total, status, deadline, created_at")
+
+  if (!data) {
+    return {
+      wordsThisMonth: 0,
+      wordsChange: null,
+      revenueThisMonth: 0,
+      revenueChange: null,
+      activeProjects: 0,
+      overdueProjects: 0,
+    }
+  }
+
+  const thisMonth = data.filter(
+    (p) => new Date(p.created_at) >= monthStart
+  )
+
+  const lastMonth = data.filter((p) => {
+    const d = new Date(p.created_at)
+
+    return d >= lastMonthStart && d < monthStart
+  })
+
+  const wordsThisMonth = thisMonth.reduce(
+    (sum, p) => sum + p.word_count,
+    0
+  )
+
+  const wordsLastMonth = lastMonth.reduce(
+    (sum, p) => sum + p.word_count,
+    0
+  )
+
+  const revenueThisMonth = thisMonth.reduce(
+    (sum, p) => sum + Number(p.invoice_total),
+    0
+  )
+
+  const revenueLastMonth = lastMonth.reduce(
+    (sum, p) => sum + Number(p.invoice_total),
+    0
+  )
+
+  // Returns null rather than a misleading "∞%" when there is
+  // no prior-month baseline to compare against.
+  function pctChange(
+    current: number,
+    previous: number
+  ): number | null {
+    if (previous === 0) return null
+
+    return Math.round(((current - previous) / previous) * 100)
+  }
+
+  return {
+    wordsThisMonth,
+    wordsChange: pctChange(wordsThisMonth, wordsLastMonth),
+    revenueThisMonth,
+    revenueChange: pctChange(
+      revenueThisMonth,
+      revenueLastMonth
+    ),
+    activeProjects: data.filter(
+      (p) => p.status === "in_progress"
+    ).length,
+    overdueProjects: data.filter(
+      (p) =>
+        p.deadline &&
+        new Date(p.deadline) < now &&
+        p.status !== "paid"
+    ).length,
+  }
+}
+
+// DASHBOARD: Revenue by client
+export async function getRevenueByClient(limit = 5) {
+  const supabase = await createClient()
+
+  const { data } = await supabase
+    .from("projects")
+    .select("invoice_total, clients(name)")
+
+  if (!data) return []
+
+  const totals = new Map<string, number>()
+
+  for (const row of data) {
+    const name =
+      (row.clients as { name: string } | null)?.name ?? "Unknown"
+
+    totals.set(
+      name,
+      (totals.get(name) ?? 0) + Number(row.invoice_total)
+    )
+  }
+
+  return Array.from(totals.entries())
+    .map(([clientName, revenue]) => ({
+      clientName,
+      revenue,
+    }))
+    .sort((a, b) => b.revenue - a.revenue)
+    .slice(0, limit)
+}
+```

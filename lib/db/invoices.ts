@@ -121,3 +121,15 @@ export async function getOverdueInvoices(): Promise<Invoice[]> {
 
   return data as Invoice[]
 }
+
+// Get total outstanding payments (sent or overdue)
+export async function getOutstandingPayments(): Promise<{ total: number; count: number }> {
+  const supabase = await createClient()
+  const { data } = await supabase.from("invoices").select("amount").in("status", ["sent", "overdue"])
+  if (!data) return { total: 0, count: 0 }
+
+  return {
+    total: data.reduce((sum, inv) => sum + Number(inv.amount), 0),
+    count: data.length,
+  }
+}

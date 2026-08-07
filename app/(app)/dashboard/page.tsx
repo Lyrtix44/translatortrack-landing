@@ -1,66 +1,88 @@
-// app/dashboard/page.tsx — replaces the Week 6 placeholder for good
+// app/(app)/dashboard/page.tsx
 import { createClient } from "@/lib/supabase/server"
-import { getProjects } from "@/lib/db/projects"
-import { getClients } from "@/lib/db/clients"
-import { ProjectStatusSelect } from "@/components/dashboard/ProjectStatusSelect"
-import { EmptyProjectsState } from "@/components/dashboard/EmptyProjectsState"
-import { OnboardingChecklist } from "@/components/dashboard/OnboardingChecklist"
-import Link from "next/link"
+import { getProjects, getDashboardStats, getRevenueByClient } from "@/lib/db/projects"
+import { getOutstandingPayments } from "@/lib/db/invoices"
+import { FileText, DollarSign, Clock, Languages } from "lucide-react"
+import { StatCard } from "@/components/dashboard/StatCard"
+import { UpcomingDeadlines } from "@/components/dashboard/UpcomingDeadlines"
+import { RevenueByClientChart } from "@/components/dashboard/RevenueByClientChart"
+import { QuickActions } from "@/components/dashboard/QuickActions"
+import { FloatingActionButton } from "@/components/dashboard/FloatingActionButton"
 
 export default async function DashboardPage() {
   const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-  const [projects, clients] = await Promise.all([getProjects(), getClients()])
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  const checklistItems = [
-    { label: "Add your first client", done: clients.length > 0, href: "/clients" },
-    { label: "Create your first project", done: projects.length > 0, href: "/projects/new" },
-    {
-      label: "Send your first invoice",
-      done: projects.some((p) => p.status === "invoiced" || p.status === "paid"),
-      href: "/dashboard",
-    },
-  ]
+  const [stats, projects, revenueByClient, outstanding] = await Promise.all([
+    getDashboardStats(),
+    getProjects(),
+    getRevenueByClient(),
+    getOutstandingPayments(),
+  ])
+
+  const upcomingDeadlines = projects
+    .filter((p) => p.deadline && p.status !== "paid" && p.status !== "delivered")
+    .slice(0, 5)
+
+  const firstName = user?.user_metadata?.full_name?.split(" ")[0] || "there"
 
   return (
-    <div className="min-h-screen bg-paper pt-28 px-6 pb-20">
-      <div className="max-w-4xl mx-auto">
-        <div className="flex items-center justify-between mb-8">
-          <h1 className="font-display text-3xl text-ink">
-            Welcome back, {user?.user_metadata?.full_name?.split(" ")[0] || "translator"}.
-          </h1>
-          <Link
-            href="/projects/new"
-            className="bg-ink hover:bg-ink-light text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
-          >
-            + New project
-          </Link>
-        </div>
-
-        <OnboardingChecklist items={checklistItems} />
-
-        {projects.length === 0 ? (
-          <EmptyProjectsState />
-        ) : (
-          <div className="space-y-3">
-            {projects.map((project) => (
-              <div
-                key={project.id}
-                className="bg-white border border-border rounded-xl p-4 flex items-center justify-between"
-              >
-                <div>
-                  <p className="text-ink font-medium text-sm">{project.title}</p>
-                  <p className="text-slate-mid text-xs mt-0.5">
-                    {project.clients?.name} · {project.word_count.toLocaleString()} words · $
-                    {project.invoice_total.toFixed(2)}
-                  </p>
-                </div>
-                <ProjectStatusSelect projectId={project.id} status={project.status} />
-              </div>
-            ))}
-          </div>
-        )}
+    <div>
+      <div className="mb-8">
+        <h1 className="font-display text-3xl text-ink mb-1">Dashboard</h1>
+        <p className="text-slate-mid text-sm">Welcome back, {firstName}.</p>
       </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <StatCard
+          label="Words This Month"
+          value={stats.wordsThisMonth.toLocaleString()}
+          icon={FileText}
+          trend={
+            stats.wordsChange !== null
+              ? { direction: stats.wordsChange >= 0 ? "up" : "down", value: `${Math.abs(stats.wordsChange)}% vs last month` }
+              : undefined
+          }
+        />
+        <StatCard
+          label="Revenue This Month"
+          value={`$${stats.revenueThisMonth.toLocaleString()}`}
+          icon={DollarSign}
+          trend={
+            stats.revenueChange !== null
+              ? { direction: stats.revenueChange >= 0 ? "up" : "down", value: `${Math.abs(stats.revenueChange)}% vs last month` }
+              : undefined
+          }
+        />
+        <StatCard
+          label="Outstanding Payments"
+          value={`$${outstanding.total.toLocaleString()}`}
+          icon={Clock}
+          meta={{
+            text: `${outstanding.count} unpaid invoice${outstanding.count === 1 ? "" : "s"}`,
+            tone: outstanding.count > 0 ? "warning" : "neutral",
+          }}
+        />
+        <StatCard
+          label="Active Projects"
+          value={String(stats.activeProjects)}
+          icon={Languages}
+          meta={{
+            text: `${stats.overdueProjects} overdue`,
+            tone: stats.overdueProjects > 0 ? "danger" : "neutral",
+          }}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <UpcomingDeadlines projects={upcomingDeadlines} />
+        <RevenueByClientChart data={revenueByClient} />
+      </div>
+
+      <QuickActions />
+      <FloatingActionButton />
     </div>
   )
 }
