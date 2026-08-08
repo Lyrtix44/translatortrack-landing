@@ -5,6 +5,7 @@ import {
   getProjects,
   type CreateProjectInput,
   type Project,
+  type ProjectStatus,
 } from "@/lib/db/projects"
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
@@ -25,7 +26,6 @@ export async function createProjectAction(
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Without this check, anyone could call this Server Action directly and create projects without being signed in.
   if (!user) {
     return {
       project: null,
@@ -60,4 +60,29 @@ export async function createProjectAction(
     project,
     error: project ? null : "Couldn't create the project.",
   }
+}
+
+export async function updateProjectStatusAction(projectId: string, status: ProjectStatus) {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false }
+  }
+
+  const { error } = await supabase
+    .from("projects")
+    .update({ status })
+    .eq("id", projectId)
+
+  if (error) {
+    console.error("Failed to update project status:", error.message)
+    return { success: false }
+  }
+
+  revalidatePath("/projects")
+  revalidatePath("/dashboard")
+  return { success: true }
 }

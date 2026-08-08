@@ -49,7 +49,7 @@ export async function getProjects(filters?: {
 
   let query = supabase
     .from("projects")
-    .select(`*, clients (name, email, contact_name)`)
+    .select('*, clients (name, email, contact_name)')
     .order("deadline", { ascending: true, nullsFirst: false })
 
   if (filters?.status) {
