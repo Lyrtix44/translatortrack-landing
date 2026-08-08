@@ -38,7 +38,12 @@ export default async function PricingPage() {
             {profile?.plan === plan.key ? (
               <div className="text-center text-sm text-slate-mid py-2.5 border border-border rounded-lg">Current plan</div>
             ) : plan.priceId ? (
-              <UpgradeButton priceId={plan.priceId} planName={plan.name} userEmail={user.email} userId={user.id} />
+              <UpgradeButton 
+                priceId={plan.priceId as string}   // ✅ assertion – we know it's truthy
+                planName={plan.name} 
+                userEmail={user.email} 
+                userId={user.id} 
+              />
             ) : null}
           </Card>
         ))}
