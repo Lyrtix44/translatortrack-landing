@@ -172,7 +172,7 @@ export async function getRevenueByClient(limit = 5) {
 
   const totals = new Map<string, number>()
   for (const row of data) {
-    const name = (row.clients as { name: string } | null)?.name ?? "Unknown"
+    const name = (row.clients as { name: string }[] | null)?.[0]?.name ?? "Unknown"
     totals.set(name, (totals.get(name) ?? 0) + Number(row.invoice_total))
   }
 
