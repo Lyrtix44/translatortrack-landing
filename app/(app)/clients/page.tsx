@@ -1,149 +1,54 @@
-// app/clients/page.tsx
-
-import { createClient } from "@/lib/supabase/server";
-import { AddClientForm } from "@/components/clients/AddClientForm";
-
-export const metadata = {
-  title: "Clients | TranslatorTrack",
-};
-
-type Client = {
-  id: string;
-  name: string;
-  email: string | null;
-  default_rate: number | null;
-  currency: string;
-  created_at: string;
-};
-
-async function getClients(): Promise<Client[]> {
-  const supabase = await createClient();
-
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return [];
-  }
-
-  const { data, error } = await supabase
-    .from("clients")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error(error);
-    return [];
-  }
-
-  return data ?? [];
-}
+// app/(app)/clients/page.tsx
+import { Users } from "lucide-react"
+import { getClients } from "@/lib/db/clients"
+import { getProjects } from "@/lib/db/projects"
+import { AddClientForm } from "@/components/clients/AddClientForm"
+import { Card } from "@/components/ui/card"
 
 export default async function ClientsPage() {
-  const clients = await getClients();
+  const [clients, projects] = await Promise.all([getClients(), getProjects()])
+
+  const projectCountByClient = new Map<string, number>()
+  for (const p of projects) {
+    projectCountByClient.set(p.client_id, (projectCountByClient.get(p.client_id) ?? 0) + 1)
+  }
 
   return (
-    <main className="min-h-screen bg-paper px-6 py-12">
-      <div className="mx-auto max-w-6xl space-y-10">
-        {/* Header */}
-        <div className="flex flex-col gap-3">
-          <h1 className="text-4xl font-bold tracking-tight">
-            Clients
-          </h1>
+    <div>
+      <h1 className="font-display text-3xl text-ink mb-8">Clients</h1>
 
-          <p className="text-muted-foreground max-w-2xl">
-            Manage everyone you work with. Store client details,
-            contact information, and default translation rates so
-            every new project is faster to create.
-          </p>
-        </div>
-
-        {/* Add Client */}
-        <section className="rounded-xl border bg-white p-6 shadow-sm">
-          <h2 className="mb-5 text-xl font-semibold">
-            Add New Client
-          </h2>
-
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card className="p-6 lg:col-span-1 h-fit">
+          <h3 className="font-semibold text-ink text-sm mb-4">Add a client</h3>
           <AddClientForm />
-        </section>
+        </Card>
 
-        {/* Client List */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold">
-              Your Clients
-            </h2>
-
-            <span className="rounded-full bg-gray-100 px-3 py-1 text-sm">
-              {clients.length}{" "}
-              {clients.length === 1 ? "Client" : "Clients"}
-            </span>
-          </div>
-
+        <div className="lg:col-span-2">
           {clients.length === 0 ? (
-            <div className="rounded-xl border border-dashed bg-white p-12 text-center">
-              <h3 className="text-xl font-semibold">
-                No clients yet
-              </h3>
-
-              <p className="mt-2 text-muted-foreground">
-                Add your first client using the form above.
-                Once you've added clients, they'll appear here
-                automatically.
-              </p>
+            <div className="text-center py-16 border border-dashed border-border rounded-lg bg-white">
+              <Users size={32} className="text-slate-mid/40 mx-auto mb-3" />
+              <p className="text-slate-mid text-sm">No clients yet — add your first one.</p>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-              {clients.map((client) => (
-                <article
-                  key={client.id}
-                  className="rounded-xl border bg-white p-5 shadow-sm transition hover:shadow-md"
-                >
-                  <div className="space-y-3">
-                    <div>
-                      <h3 className="text-lg font-semibold">
-                        {client.name}
-                      </h3>
-
-                      <p className="text-sm text-muted-foreground">
-                        {client.email ?? "No email provided"}
-                      </p>
+            <div className="space-y-2">
+              {clients.map((c) => {
+                const count = projectCountByClient.get(c.id) ?? 0
+                return (
+                  <Card key={c.id} hoverable className="p-4 flex items-center justify-between">
+                    <div className="min-w-0">
+                      <p className="text-ink font-medium text-sm truncate">{c.name}</p>
+                      {c.email && <p className="text-slate-mid text-xs truncate">{c.email}</p>}
                     </div>
-
-                    <div className="space-y-1 text-sm">
-                      <p>
-                        <span className="font-medium">
-                          Default Rate:
-                        </span>{" "}
-                        {client.default_rate
-                          ? `${client.currency} ${client.default_rate}/word`
-                          : "Not set"}
-                      </p>
-
-                      <p>
-                        <span className="font-medium">
-                          Currency:
-                        </span>{" "}
-                        {client.currency}
-                      </p>
-
-                      <p>
-                        <span className="font-medium">
-                          Added:
-                        </span>{" "}
-                        {new Date(
-                          client.created_at
-                        ).toLocaleDateString()}
-                      </p>
-                    </div>
-                  </div>
-                </article>
-              ))}
+                    <span className="text-xs text-slate-mid shrink-0 ml-3">
+                      {count} {count === 1 ? "project" : "projects"}
+                    </span>
+                  </Card>
+                )
+              })}
             </div>
           )}
-        </section>
+        </div>
       </div>
-    </main>
-  );
+    </div>
+  )
 }

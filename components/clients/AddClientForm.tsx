@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef } from "react"
 import { toast } from "sonner"
 import { createClientAction, type ClientFormState } from "@/app/actions/clients"
 import { SubmitButton } from "@/components/ui/submit-button"
+import { Input } from "@/components/ui/input"
 
 const initialState: ClientFormState = { error: null, success: false }
 
@@ -21,28 +22,14 @@ export function AddClientForm() {
   return (
     <form ref={formRef} action={formAction} className="space-y-3">
       {state.error && (
-        <p className="text-red-600 text-sm" role="alert">{state.error}</p>
+        <p className="text-danger text-sm" role="alert">
+          {state.error}
+        </p>
       )}
-      <input
-        name="name"
-        required
-        placeholder="Client name"
-        className="w-full border border-border rounded-lg px-4 py-2.5 text-sm bg-white"
-      />
-      <input
-        name="email"
-        type="email"
-        placeholder="Email (optional)"
-        className="w-full border border-border rounded-lg px-4 py-2.5 text-sm bg-white"
-      />
-      <input
-        name="default_rate"
-        type="number"
-        step="0.01"
-        placeholder="Default rate per word (optional)"
-        className="w-full border border-border rounded-lg px-4 py-2.5 text-sm bg-white"
-      />
-      <SubmitButton pendingText="Adding..." className="w-full bg-ink hover:bg-ink-light text-white">
+      <Input name="name" required placeholder="Client name" />
+      <Input name="email" type="email" placeholder="Email (optional)" />
+      <Input name="default_rate" type="number" step="0.01" placeholder="Default rate per word (optional)" />
+      <SubmitButton pendingText="Adding..." variant="primary" size="md" className="w-full">
         Add client
       </SubmitButton>
     </form>

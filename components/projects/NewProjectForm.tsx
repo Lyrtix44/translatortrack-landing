@@ -1,10 +1,12 @@
 // components/projects/NewProjectForm.tsx
 "use client"
-
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { createProjectAction } from "@/app/actions/projects"
 import { toast } from "sonner"
+import { createProjectAction } from "@/app/actions/projects"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Card } from "@/components/ui/card"
 
 interface Client {
   id: string
@@ -26,14 +28,10 @@ interface ParsedProject {
 
 export function NewProjectForm({ clients }: { clients: Client[] }) {
   const router = useRouter()
-
-  // AI intake state
   const [briefText, setBriefText] = useState("")
   const [parsing, setParsing] = useState(false)
-  const [parseError, setParseError] = useState<string | null>(null)
   const [aiNote, setAiNote] = useState<string | null>(null)
 
-  // Manual form fields (populated by AI or typed manually)
   const [clientId, setClientId] = useState("")
   const [title, setTitle] = useState("")
   const [sourceLang, setSourceLang] = useState("EN")
@@ -48,69 +46,34 @@ export function NewProjectForm({ clients }: { clients: Client[] }) {
       toast.error("Paste a bit more detail from the client's message.")
       return
     }
-
     setParsing(true)
-    setParseError(null)
     setAiNote(null)
-
     try {
-      await toast.promise(
-        fetch("/api/parse-project", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ message: briefText }),
-        }).then(async (res) => {
-          const data = await res.json()
-
-          if (!res.ok) {
-            throw new Error(
-              data.error || "Couldn't parse that — try filling in manually below."
-            )
-          }
-
-          const result: ParsedProject = data.result
-
-          // Pre-fill editable fields
-          setTitle(result.title)
-          setSourceLang(result.source_language)
-          setTargetLang(result.target_language)
-
-          if (result.word_count) setWordCount(String(result.word_count))
-          if (result.rate_hint) setRate(String(result.rate_hint))
-          if (result.deadline) setDeadline(result.deadline)
-
-          if (
-            result.confidence_notes &&
-            result.confidence_notes !== "None"
-          ) {
-            setAiNote(result.confidence_notes)
-          }
-
-          // Match client if possible
-          if (result.client_name_guess) {
-            const match = clients.find(
-              (c) =>
-                c.name.toLowerCase() ===
-                result.client_name_guess?.toLowerCase()
-            )
-
-            if (match) setClientId(match.id)
-          }
-
-          return result
-        }),
-        {
-          loading: "Reading the message...",
-          success: "Parsed — review the fields below.",
-          error: (err) => err.message,
-        }
-      )
-    } catch (err) {
-      if (err instanceof Error) {
-        setParseError(err.message)
+      const res = await fetch("/api/parse-project", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: briefText }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        toast.error(data.error || "Couldn't parse that message.")
+        return
       }
+      const result: ParsedProject = data.result
+      setTitle(result.title)
+      setSourceLang(result.source_language)
+      setTargetLang(result.target_language)
+      if (result.word_count) setWordCount(String(result.word_count))
+      if (result.rate_hint) setRate(String(result.rate_hint))
+      if (result.deadline) setDeadline(result.deadline)
+      if (result.confidence_notes && result.confidence_notes !== "None") setAiNote(result.confidence_notes)
+      if (result.client_name_guess) {
+        const match = clients.find((c) => c.name.toLowerCase() === result.client_name_guess?.toLowerCase())
+        if (match) setClientId(match.id)
+      }
+      toast.success("Parsed — review the fields below.")
+    } catch {
+      toast.error("Something went wrong reaching the AI.")
     } finally {
       setParsing(false)
     }
@@ -118,11 +81,8 @@ export function NewProjectForm({ clients }: { clients: Client[] }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-
     if (!clientId || !title || !wordCount || !rate) return
-
     setSubmitting(true)
-
     const { project, error } = await createProjectAction({
       client_id: clientId,
       title,
@@ -133,170 +93,121 @@ export function NewProjectForm({ clients }: { clients: Client[] }) {
       currency: clients.find((c) => c.id === clientId)?.currency || "USD",
       deadline: deadline ? new Date(deadline).toISOString() : null,
     })
-
     setSubmitting(false)
-
     if (error) {
-      setParseError(error)
+      toast.error(error)
       return
     }
-
-    if (project) {
-      router.push("/dashboard")
-    }
+    if (project) router.push("/projects")
   }
 
-  const invoiceTotal =
-    wordCount && rate ? (parseInt(wordCount) * parseFloat(rate)).toFixed(2) : null
+  const invoiceTotal = wordCount && rate ? (parseInt(wordCount) * parseFloat(rate)).toFixed(2) : null
 
   return (
-    <div className="space-y-6">
-      {/* AI Intake Panel */}
-      <div className="bg-amber-50 border border-amber-200 rounded-2xl p-6">
+    <div className="space-y-6 max-w-2xl">
+      <Card className="bg-amber-light border-amber/30 p-6">
         <div className="flex items-center gap-2 mb-3">
           <span className="text-lg">✨</span>
-          <h3 className="font-semibold text-slate-900 text-sm">Paste a client message</h3>
+          <h3 className="font-semibold text-ink text-sm">Paste a client message</h3>
         </div>
-        <p className="text-slate-600 text-xs mb-3">
-          Paste the email or message from your client — we&apos;ll pre-fill the form below.
+        <p className="text-slate-mid text-xs mb-3">
+          Paste the email or message from your client — we'll pre-fill the form below.
         </p>
         <textarea
           value={briefText}
           onChange={(e) => setBriefText(e.target.value)}
-          placeholder='e.g. "Hi Maria, new contract for you — about 4500 words, EN to DE, need it by next Friday, usual rate."'
+          placeholder='e.g. "Hi Maria, new contract — about 4500 words, EN to DE, due next Friday, usual rate."'
           rows={3}
-          className="w-full border border-slate-200 rounded-lg px-4 py-3 text-sm focus:outline-none focus:border-slate-800 bg-white resize-none"
+          className="w-full border border-border rounded px-4 py-3 text-sm focus:outline-none focus:border-ink bg-white resize-none"
         />
-        {parseError && <p className="text-red-600 text-xs mt-2">{parseError}</p>}
-        <button
-          type="button"
-          onClick={handleParse}
-          disabled={parsing}
-          className="mt-3 bg-slate-900 hover:bg-slate-800 text-white text-sm px-5 py-2 rounded-lg font-medium transition-colors disabled:opacity-50"
-        >
+        <Button type="button" onClick={handleParse} disabled={parsing} variant="secondary" size="sm" className="mt-3">
           {parsing ? "Reading message..." : "Parse with AI →"}
-        </button>
-      </div>
+        </Button>
+      </Card>
 
       {aiNote && (
-        <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm text-blue-700">
+        <div className="bg-info-light border border-info/20 rounded px-4 py-3 text-sm text-info">
           <strong>AI note:</strong> {aiNote} — please double-check the fields below.
         </div>
       )}
 
-      {/* Manual Form */}
-      <form onSubmit={handleSubmit} className="bg-white border border-slate-200 rounded-2xl p-6 space-y-4">
-        <div>
-          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-            Client
-          </label>
-          <select
-            required
-            value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
-            className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm bg-slate-50"
-          >
-            <option value="">Select a client...</option>
-            {clients.map((c) => (
-              <option key={c.id} value={c.id}>{c.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-            Project title
-          </label>
-          <input
-            required
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm bg-white"
-          />
-        </div>
-
-        <div className="grid grid-cols-2 gap-4">
+      <Card className="p-6">
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              Source language
+            <label className="block text-xs font-semibold text-slate-mid uppercase tracking-wider mb-1.5">
+              Client
             </label>
-            <input
+            <select
               required
-              value={sourceLang}
-              onChange={(e) => setSourceLang(e.target.value.toUpperCase())}
-              maxLength={2}
-              className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm bg-white"
-            />
+              value={clientId}
+              onChange={(e) => setClientId(e.target.value)}
+              className="w-full border border-border rounded px-4 py-2.5 text-sm bg-paper focus:outline-none focus:border-ink"
+            >
+              <option value="">Select a client...</option>
+              {clients.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </select>
           </div>
+
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              Target language
+            <label className="block text-xs font-semibold text-slate-mid uppercase tracking-wider mb-1.5">
+              Project title
             </label>
-            <input
-              required
-              value={targetLang}
-              onChange={(e) => setTargetLang(e.target.value.toUpperCase())}
-              maxLength={2}
-              className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm bg-white"
-            />
+            <Input required value={title} onChange={(e) => setTitle(e.target.value)} />
           </div>
-        </div>
 
-        <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-mid uppercase tracking-wider mb-1.5">
+                Source language
+              </label>
+              <Input required value={sourceLang} onChange={(e) => setSourceLang(e.target.value.toUpperCase())} maxLength={2} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-mid uppercase tracking-wider mb-1.5">
+                Target language
+              </label>
+              <Input required value={targetLang} onChange={(e) => setTargetLang(e.target.value.toUpperCase())} maxLength={2} />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-semibold text-slate-mid uppercase tracking-wider mb-1.5">
+                Word count
+              </label>
+              <Input required type="number" value={wordCount} onChange={(e) => setWordCount(e.target.value)} />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-slate-mid uppercase tracking-wider mb-1.5">
+                Rate per word
+              </label>
+              <Input required type="number" step="0.01" value={rate} onChange={(e) => setRate(e.target.value)} />
+            </div>
+          </div>
+
           <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              Word count
+            <label className="block text-xs font-semibold text-slate-mid uppercase tracking-wider mb-1.5">
+              Deadline
             </label>
-            <input
-              required
-              type="number"
-              value={wordCount}
-              onChange={(e) => setWordCount(e.target.value)}
-              className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm bg-white"
-            />
+            <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
           </div>
-          <div>
-            <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-              Rate per word
-            </label>
-            <input
-              required
-              type="number"
-              step="0.01"
-              value={rate}
-              onChange={(e) => setRate(e.target.value)}
-              className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm bg-white"
-            />
-          </div>
-        </div>
 
-        <div>
-          <label className="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1.5">
-            Deadline
-          </label>
-          <input
-            type="date"
-            value={deadline}
-            onChange={(e) => setDeadline(e.target.value)}
-            className="w-full border border-slate-200 rounded-lg px-4 py-2.5 text-sm bg-white"
-          />
-        </div>
+          {invoiceTotal && (
+            <div className="bg-paper-dark rounded px-4 py-3 flex items-center justify-between">
+              <span className="text-sm text-slate-mid">Invoice total</span>
+              <span className="font-display text-xl text-ink">${invoiceTotal}</span>
+            </div>
+          )}
 
-        {invoiceTotal && (
-          <div className="bg-slate-100 rounded-lg px-4 py-3 flex items-center justify-between">
-            <span className="text-sm text-slate-600">Invoice total</span>
-            <span className="text-xl font-bold text-slate-900">${invoiceTotal}</span>
-          </div>
-        )}
-
-        <button
-          type="submit"
-          disabled={submitting}
-          className="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3 rounded-lg text-sm transition-colors disabled:opacity-50"
-        >
-          {submitting ? "Creating..." : "Create project"}
-        </button>
-      </form>
+          <Button type="submit" disabled={submitting} variant="primary" size="lg" className="w-full">
+            {submitting ? "Creating..." : "Create project"}
+          </Button>
+        </form>
+      </Card>
     </div>
   )
 }

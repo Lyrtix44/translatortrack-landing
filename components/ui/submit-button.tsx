@@ -1,26 +1,16 @@
+// components/ui/submit-button.tsx — updated
 "use client"
-
 import { useFormStatus } from "react-dom"
-import { Button } from "@/components/ui/button"
-import { cn } from "@/lib/utils"
+import { Button, type ButtonProps } from "@/components/ui/button"
 
 export function SubmitButton({
   children,
   pendingText,
-  className,
-}: {
-  children: React.ReactNode
-  pendingText: string
-  className?: string
-}) {
+  ...props
+}: ButtonProps & { pendingText: string }) {
   const { pending } = useFormStatus()
-
   return (
-    <Button
-      type="submit"
-      disabled={pending}
-      className={cn(className)}
-    >
+    <Button type="submit" disabled={pending} {...props}>
       {pending ? pendingText : children}
     </Button>
   )
