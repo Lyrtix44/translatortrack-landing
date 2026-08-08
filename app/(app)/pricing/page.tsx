@@ -1,4 +1,3 @@
-// app/(app)/pricing/page.tsx
 import { redirect } from "next/navigation"
 import { createClient } from "@/lib/supabase/server"
 import { UpgradeButton } from "@/components/billing/UpgradeButton"
@@ -16,6 +15,10 @@ export default async function PricingPage() {
   if (!user || !user.email) redirect("/login")
 
   const { data: profile } = await supabase.from("profiles").select("plan, cancels_at").eq("id", user.id).single()
+
+  // Store email in a variable to help TypeScript narrow it
+  const userEmail = user.email
+  const userId = user.id
 
   return (
     <div>
@@ -39,10 +42,10 @@ export default async function PricingPage() {
               <div className="text-center text-sm text-slate-mid py-2.5 border border-border rounded-lg">Current plan</div>
             ) : plan.priceId ? (
               <UpgradeButton 
-                priceId={plan.priceId as string}   // ✅ assertion – we know it's truthy
-                planName={plan.name} 
-                userEmail={user.email} 
-                userId={user.id} 
+                priceId={plan.priceId as string}
+                planName={plan.name}
+                userEmail={userEmail}  // now guaranteed to be string
+                userId={userId}
               />
             ) : null}
           </Card>
