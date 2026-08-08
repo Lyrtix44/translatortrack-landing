@@ -1,5 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
-import { getProjectById, updateProjectStatus } from "./projects"
+import { getProject, updateProjectStatus } from "./projects"
 
 export type InvoiceStatus = "draft" | "sent" | "paid" | "overdue"
 
@@ -27,7 +27,7 @@ export async function createInvoiceFromProject(
   const supabase = await createClient()
 
   // 1. Fetch the project
-  const project = await getProjectById(projectId)
+  const project = await getProject(projectId)
   if (!project) return null
 
   // 2. Generate invoice number: INV-2025-001
