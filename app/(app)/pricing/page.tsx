@@ -5,9 +5,9 @@ import { UpgradeButton } from "@/components/billing/UpgradeButton"
 import { Card } from "@/components/ui/card"
 
 const PLANS = [
-  { key: "free", name: "Free", price: 0, priceId: null, blurb: "Up to 5 active projects" },
-  { key: "pro", name: "Pro", price: 19, priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO!, blurb: "Unlimited projects" },
-  { key: "studio", name: "Studio", price: 49, priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_STUDIO!, blurb: "Up to 3 team members" },
+  { key: "free", name: "Free", price: 0, priceId: "", blurb: "Up to 5 active projects" },
+  { key: "pro", name: "Pro", price: 19, priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_PRO || "", blurb: "Unlimited projects" },
+  { key: "studio", name: "Studio", price: 49, priceId: process.env.NEXT_PUBLIC_PADDLE_PRICE_STUDIO || "", blurb: "Up to 3 team members" },
 ]
 
 export default async function PricingPage() {
