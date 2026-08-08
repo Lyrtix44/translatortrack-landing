@@ -4,6 +4,7 @@ export type ProjectStatus = "in_progress" | "delivered" | "invoiced" | "paid"
 
 export interface Project {
   id: string
+  user_id: string          // added
   client_id: string
   title: string
   source_language: string
@@ -72,9 +73,14 @@ export async function getProject(id: string): Promise<Project | null> {
 export async function createProject(input: CreateProjectInput): Promise<Project | null> {
   const supabase = await createClient()
 
+  // Get the current user
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return null
+
   const { data, error } = await supabase
     .from("projects")
     .insert({
+      user_id: user.id,    // set the user_id
       client_id: input.client_id,
       title: input.title,
       source_language: input.source_language,
