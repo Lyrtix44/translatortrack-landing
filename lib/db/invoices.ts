@@ -1,3 +1,4 @@
+// lib/db/invoices.ts
 import { createClient } from "@/lib/supabase/server"
 import { getProject, updateProjectStatus } from "./projects"
 
@@ -132,4 +133,23 @@ export async function getOutstandingPayments(): Promise<{ total: number; count: 
     total: data.reduce((sum, inv) => sum + Number(inv.amount), 0),
     count: data.length,
   }
+}
+
+// ✨ NEW: Get all invoices with client name for the list page
+export async function getInvoices(): Promise<(Invoice & { clientName: string })[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("*, clients(name)")
+    .order("created_at", { ascending: false })
+
+  if (error || !data) {
+    console.error("getInvoices error:", error?.message)
+    return []
+  }
+
+  return data.map((inv) => ({
+    ...inv,
+    clientName: (inv.clients as { name: string } | null)?.name ?? "Unknown",
+  }))
 }
