@@ -4,19 +4,42 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { LayoutDashboard, Languages, Receipt, Users, Settings, HelpCircle, X } from "lucide-react"
 
-const NAV_ITEMS = [
+type NavItem = {
+  href: string
+  label: string
+  icon: any
+  badge?: number  // badge is now a number, not a boolean
+}
+
+const BASE_NAV_ITEMS: Omit<NavItem, "badge">[] = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/projects", label: "Projects", icon: Languages, badge: 8 },
+  { href: "/projects", label: "Projects", icon: Languages },
   { href: "/invoices", label: "Invoices", icon: Receipt },
   { href: "/clients", label: "Clients", icon: Users },
 ]
 
-export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
+export function Sidebar({
+  isOpen,
+  onClose,
+  projectCount,
+}: {
+  isOpen: boolean
+  onClose: () => void
+  projectCount: number
+}) {
   const pathname = usePathname()
+
+  // Build nav items with dynamic badge
+  const NAV_ITEMS: NavItem[] = BASE_NAV_ITEMS.map((item) => {
+    if (item.label === "Projects") {
+      return { ...item, badge: projectCount > 0 ? projectCount : undefined }
+    }
+    return { ...item, badge: undefined }
+  })
 
   return (
     <>
-      {/* Mobile overlay — only rendered when the drawer is open */}
+      {/* Mobile overlay */}
       {isOpen && (
         <div
           className="fixed inset-0 bg-black/40 z-40 lg:hidden"
@@ -65,7 +88,7 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
                   <Icon size={18} strokeWidth={isActive ? 2.25 : 1.75} />
                   {item.label}
                 </span>
-                {item.badge && (
+                {item.badge !== undefined && (
                   <span className="text-[11px] font-semibold bg-white/10 text-white px-1.5 py-0.5 rounded-full min-w-[20px] text-center">
                     {item.badge}
                   </span>
@@ -85,7 +108,6 @@ export function Sidebar({ isOpen, onClose }: { isOpen: boolean; onClose: () => v
           </Link>
         </div>
 
-        {/* Bottom-pinned Help & FAQ — its own section, per spec */}
         <div className="px-3 py-3 border-t border-white/10 shrink-0">
           <Link
             href="/help"
