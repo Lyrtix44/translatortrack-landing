@@ -1,4 +1,4 @@
-// app/api/invoices/[id]/pdf/route.ts
+// app/api/invoices/[id]/pdf/route.tsx
 import { NextRequest, NextResponse } from "next/server"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { createClient } from "@/lib/supabase/server"
@@ -47,7 +47,8 @@ export async function GET(
     />
   )
 
-  return new NextResponse(pdfStream, {
+  // Return the PDF as a response with type assertion to fix TS error
+  return new NextResponse(pdfStream as any, {
     status: 200,
     headers: {
       "Content-Type": "application/pdf",
