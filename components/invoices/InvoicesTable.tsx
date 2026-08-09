@@ -3,10 +3,10 @@
 import { useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { Send, CheckCircle2, Plus, Download } from "lucide-react"  // added Download
+import { Send, CheckCircle2, Plus, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge, INVOICE_STATUS_BADGE } from "@/components/ui/badge"
-import { markInvoiceSentAction, markInvoicePaidAction } from "@/app/actions/invoices"
+import { sendInvoiceAction, markInvoicePaidAction } from "@/app/actions/invoices"
 import type { Invoice, InvoiceStatus } from "@/lib/db/invoices"
 
 type InvoiceWithClient = Invoice & { clientName: string }
@@ -23,11 +23,15 @@ const STATUS_TABS: { key: InvoiceStatus | "all"; label: string }[] = [
 function InvoiceActions({ invoice, size = "sm" }: { invoice: Invoice; size?: "sm" | "md" }) {
   const [isPending, startTransition] = useTransition()
 
+  // ✨ Updated to send real email
   function handleSend() {
     startTransition(async () => {
-      const ok = await markInvoiceSentAction(invoice.id)
-      if (ok) toast.success(`${invoice.invoice_number} marked as sent.`)
-      else toast.error("Couldn't update the invoice.")
+      const result = await sendInvoiceAction(invoice.id)
+      if (result.success) {
+        toast.success(`Invoice ${invoice.invoice_number} sent to client.`)
+      } else {
+        toast.error(result.error || "Couldn't send the invoice.")
+      }
     })
   }
 
