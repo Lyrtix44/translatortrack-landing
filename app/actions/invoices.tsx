@@ -1,14 +1,12 @@
-// app/actions/invoices.ts
+// app/actions/invoices.tsx
 "use server"
 import { revalidatePath } from "next/cache"
-import { markInvoiceSent, markInvoicePaid, createInvoiceFromProject, getInvoice } from "@/lib/db/invoices"
+import { markInvoiceSent, markInvoicePaid, createInvoiceFromProject } from "@/lib/db/invoices"
 import { requireAuth } from "@/lib/auth/require-auth"
 import { createClient } from "@/lib/supabase/server"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { InvoicePDF } from "@/components/invoices/InvoicePDF"
 import { sendInvoiceEmail } from "@/lib/email/sendInvoiceEmail"
-
-// Existing actions...
 
 export async function markInvoiceSentAction(invoiceId: string): Promise<boolean> {
   await requireAuth()
@@ -38,7 +36,6 @@ export async function generateInvoiceAction(projectId: string) {
   return { invoice, error: invoice ? null : "Couldn't generate the invoice." }
 }
 
-// ✨ NEW: Send invoice email and mark as sent
 export async function sendInvoiceAction(invoiceId: string): Promise<{ success: boolean; error?: string }> {
   const user = await requireAuth()
   const supabase = await createClient()
