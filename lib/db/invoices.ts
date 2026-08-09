@@ -153,3 +153,19 @@ export async function getInvoices(): Promise<(Invoice & { clientName: string })[
     clientName: (inv.clients as { name: string } | null)?.name ?? "Unknown",
   }))
 }
+
+// ✨ NEW: Get all invoices for a specific project
+export async function getInvoicesByProject(projectId: string): Promise<Invoice[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("*")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false })
+
+  if (error || !data) {
+    console.error("getInvoicesByProject error:", error?.message)
+    return []
+  }
+  return data as Invoice[]
+}

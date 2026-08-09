@@ -35,7 +35,7 @@ export function ProjectsTable({ projects }: { projects: Project[] }) {
     if (search.trim()) {
       const q = search.toLowerCase()
       result = result.filter(
-        (p) => p.title.toLowerCase().includes(q) || p.clients?.name.toLowerCase().includes(q)
+        (p) => p.title.toLowerCase().includes(q) || p.clients?.name?.toLowerCase().includes(q)
       )
     }
     return [...result].sort((a, b) => {
@@ -122,7 +122,12 @@ export function ProjectsTable({ projects }: { projects: Project[] }) {
             {filtered.map((p) => (
               <tr key={p.id} className="border-b border-border last:border-0 hover:bg-paper/50 transition-colors">
                 <td className="px-4 py-3">
-                  <p className="font-medium text-ink">{p.title}</p>
+                  <Link
+                    href={`/projects/${p.id}`}
+                    className="font-medium text-ink hover:text-amber transition-colors"
+                  >
+                    {p.title}
+                  </Link>
                   <p className="text-xs text-slate-mid">
                     {p.source_language} → {p.target_language}
                   </p>
@@ -152,7 +157,12 @@ export function ProjectsTable({ projects }: { projects: Project[] }) {
         {filtered.map((p) => (
           <div key={p.id} className="bg-white border border-border rounded-lg p-4">
             <div className="flex items-start justify-between mb-1 gap-2">
-              <p className="font-medium text-ink text-sm">{p.title}</p>
+              <Link
+                href={`/projects/${p.id}`}
+                className="font-medium text-ink text-sm hover:text-amber transition-colors"
+              >
+                {p.title}
+              </Link>
               <ProjectStatusBadge projectId={p.id} status={p.status} />
             </div>
             <p className="text-xs text-slate-mid">
