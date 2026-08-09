@@ -1,8 +1,11 @@
+// app/actions/projects.ts
 "use server"
 
 import {
   createProject,
   getProjects,
+  updateProject,
+  updateProjectStatus,
   type CreateProjectInput,
   type Project,
   type ProjectStatus,
@@ -54,6 +57,7 @@ export async function createProjectAction(
 
   if (project) {
     revalidatePath("/dashboard")
+    revalidatePath("/projects")
   }
 
   return {
@@ -62,7 +66,10 @@ export async function createProjectAction(
   }
 }
 
-export async function updateProjectStatusAction(projectId: string, status: ProjectStatus) {
+export async function updateProjectStatusAction(
+  projectId: string,
+  status: ProjectStatus
+): Promise<{ success: boolean }> {
   const supabase = await createClient()
 
   const {
@@ -72,17 +79,70 @@ export async function updateProjectStatusAction(projectId: string, status: Proje
     return { success: false }
   }
 
-  const { error } = await supabase
-    .from("projects")
-    .update({ status })
-    .eq("id", projectId)
+  const success = await updateProjectStatus(projectId, status)
 
-  if (error) {
-    console.error("Failed to update project status:", error.message)
-    return { success: false }
+  if (success) {
+    revalidatePath("/projects")
+    revalidatePath("/dashboard")
+    revalidatePath(`/projects/${projectId}`)
   }
 
+  return { success }
+}
+
+export async function updateProjectAction(
+  projectId: string,
+  formData: FormData
+): Promise<{ success: boolean; error?: string }> {
+  const supabase = await createClient()
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) {
+    return { success: false, error: "Not authenticated." }
+  }
+
+  const client_id = formData.get("client_id") as string
+  const title = (formData.get("title") as string)?.trim()
+  const source_language = (formData.get("source_language") as string)?.toUpperCase()
+  const target_language = (formData.get("target_language") as string)?.toUpperCase()
+  const word_count = parseInt(formData.get("word_count") as string)
+  const rate_per_word = parseFloat(formData.get("rate_per_word") as string)
+  const currency = formData.get("currency") as string
+  const deadline = formData.get("deadline") as string
+
+  if (!title || title.length < 2) {
+    return { success: false, error: "Please enter a project title." }
+  }
+  if (!client_id) {
+    return { success: false, error: "Please select a client." }
+  }
+  if (isNaN(word_count) || word_count <= 0) {
+    return { success: false, error: "Please enter a valid word count." }
+  }
+  if (isNaN(rate_per_word) || rate_per_word <= 0) {
+    return { success: false, error: "Please enter a valid rate." }
+  }
+
+  const project = await updateProject(projectId, {
+    client_id,
+    title,
+    source_language,
+    target_language,
+    word_count,
+    rate_per_word,
+    currency,
+    deadline: deadline || null,
+  })
+
+  if (!project) {
+    return { success: false, error: "Couldn't update the project." }
+  }
+
+  revalidatePath(`/projects/${projectId}`)
   revalidatePath("/projects")
   revalidatePath("/dashboard")
+
   return { success: true }
 }

@@ -1,10 +1,11 @@
+// lib/db/projects.ts
 import { createClient } from "@/lib/supabase/server"
 
 export type ProjectStatus = "in_progress" | "delivered" | "invoiced" | "paid"
 
 export interface Project {
   id: string
-  user_id: string          // added
+  user_id: string
   client_id: string
   title: string
   source_language: string
@@ -80,7 +81,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project 
   const { data, error } = await supabase
     .from("projects")
     .insert({
-      user_id: user.id,    // set the user_id
+      user_id: user.id,
       client_id: input.client_id,
       title: input.title,
       source_language: input.source_language,
@@ -118,7 +119,51 @@ export async function updateProjectStatus(id: string, status: ProjectStatus): Pr
   return true
 }
 
-// New functions for dashboard stats
+// ✨ NEW: Update a project's details
+export async function updateProject(
+  id: string,
+  input: Partial<CreateProjectInput>
+): Promise<Project | null> {
+  const supabase = await createClient()
+
+  // If rate or word count changed, recalculate invoice_total
+  let invoice_total: number | undefined
+
+  // Fetch current project to get existing values
+  const current = await getProject(id)
+  if (!current) return null
+
+  const newWordCount = input.word_count ?? current.word_count
+  const newRate = input.rate_per_word ?? current.rate_per_word
+  invoice_total = newWordCount * newRate
+
+  const { data, error } = await supabase
+    .from("projects")
+    .update({
+      client_id: input.client_id ?? current.client_id,
+      title: input.title ?? current.title,
+      source_language: input.source_language ?? current.source_language,
+      target_language: input.target_language ?? current.target_language,
+      word_count: newWordCount,
+      rate_per_word: newRate,
+      currency: input.currency ?? current.currency,
+      deadline: input.deadline !== undefined ? input.deadline : current.deadline,
+      invoice_total: invoice_total,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error("updateProject error:", error.message)
+    return null
+  }
+
+  return data as Project
+}
+
+// Dashboard stats functions
 export async function getDashboardStats() {
   const supabase = await createClient()
   const now = new Date()
