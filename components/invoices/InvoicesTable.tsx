@@ -3,7 +3,7 @@
 import { useState, useMemo, useTransition } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
-import { Send, CheckCircle2, Plus } from "lucide-react"
+import { Send, CheckCircle2, Plus, Download } from "lucide-react"  // added Download
 import { Button } from "@/components/ui/button"
 import { Badge, INVOICE_STATUS_BADGE } from "@/components/ui/badge"
 import { markInvoiceSentAction, markInvoicePaidAction } from "@/app/actions/invoices"
@@ -19,8 +19,7 @@ const STATUS_TABS: { key: InvoiceStatus | "all"; label: string }[] = [
   { key: "overdue", label: "Overdue" },
 ]
 
-// Shared by both the desktop row and the mobile card — one set of handlers,
-// two render shapes, same pattern as Part 4's ProjectStatusBadge
+// InvoiceActions now includes a download button for every invoice
 function InvoiceActions({ invoice, size = "sm" }: { invoice: Invoice; size?: "sm" | "md" }) {
   const [isPending, startTransition] = useTransition()
 
@@ -40,21 +39,40 @@ function InvoiceActions({ invoice, size = "sm" }: { invoice: Invoice; size?: "sm
     })
   }
 
+  // Download button is always shown
+  const downloadButton = (
+    <Button
+      variant="ghost"
+      size={size}
+      onClick={() => window.open(`/api/invoices/${invoice.id}/pdf`, "_blank")}
+    >
+      <Download size={14} />
+    </Button>
+  )
+
+  // Status-specific action button
+  let statusButton = null
   if (invoice.status === "draft") {
-    return (
+    statusButton = (
       <Button variant="ghost" size={size} onClick={handleSend} disabled={isPending}>
         <Send size={14} /> Send
       </Button>
     )
-  }
-  if (invoice.status === "sent" || invoice.status === "overdue") {
-    return (
+  } else if (invoice.status === "sent" || invoice.status === "overdue") {
+    statusButton = (
       <Button variant="ghost" size={size} onClick={handleMarkPaid} disabled={isPending}>
         <CheckCircle2 size={14} /> Mark paid
       </Button>
     )
   }
-  return null
+
+  // Return both buttons in a flex container
+  return (
+    <div className="flex items-center gap-1 justify-end">
+      {downloadButton}
+      {statusButton}
+    </div>
+  )
 }
 
 export function InvoicesTable({ invoices }: { invoices: InvoiceWithClient[] }) {

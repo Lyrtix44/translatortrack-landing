@@ -13,6 +13,7 @@
     "@next/font": "^14.2.15",
     "@paddle/paddle-js": "^1.6.4",
     "@paddle/paddle-node-sdk": "^3.8.0",
+    "@react-pdf/renderer": "^4.6.0",
     "@supabase/ssr": "^0.12.3",
     "@supabase/supabase-js": "^2.110.8",
     "class-variance-authority": "^0.7.1",
