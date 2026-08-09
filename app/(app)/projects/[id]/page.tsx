@@ -10,19 +10,22 @@ import { Badge, INVOICE_STATUS_BADGE } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Calendar, Users, FileText, DollarSign, ArrowLeft } from "lucide-react"
 
+// Next.js 15: params is now a Promise
 export default async function ProjectDetailPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }) {
+  const { id } = await params  // ✅ Await the params
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect("/login")
 
-  const project = await getProject(params.id)
+  const project = await getProject(id)
   if (!project) notFound()
 
-  const invoices = await getInvoicesByProject(params.id)
+  const invoices = await getInvoicesByProject(id)
 
   // Format currency
   const formatCurrency = (amount: number) =>
@@ -155,7 +158,7 @@ export default async function ProjectDetailPage({
                   </Button>
                 </Link>
               )}
-              <Link href={`/projects/${project.id}/edit`} className="block">
+              <Link href={`/projects/${id}/edit`} className="block">
                 <Button variant="secondary" size="sm" className="w-full">
                   Edit project
                 </Button>
