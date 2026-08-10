@@ -130,59 +130,42 @@ export async function createClientRecord(
 
 export async function updateClient(
   id: string,
-  data: {
-    name?: string
-    email?: string | null
-    default_rate?: number | null
-    currency?: string
-  }
+  data: UpdateClientInput
 ): Promise<Client | null> {
   const supabase = await createClient()
 
+  // Only include fields that are provided (undefined means "do not change")
+  const updates: Record<string, any> = {
+    updated_at: new Date().toISOString(),
+  }
+
+  if (data.name !== undefined) updates.name = data.name
+  if (data.email !== undefined) updates.email = data.email
+  if (data.contact_name !== undefined) updates.contact_name = data.contact_name
+  if (data.phone !== undefined) updates.phone = data.phone
+  if (data.company !== undefined) updates.company = data.company
+  if (data.address !== undefined) updates.address = data.address
+  if (data.notes !== undefined) updates.notes = data.notes
+  if (data.default_rate !== undefined) updates.default_rate = data.default_rate
+  if (data.currency !== undefined) updates.currency = data.currency
+
+  // Log what we're updating (for debugging)
+  console.log(`updateClient: Updating client ${id} with:`, updates)
+
   const { error, data: updated } = await supabase
     .from("clients")
-    .update({
-      name: data.name,
-      email: data.email,
-      default_rate: data.default_rate,
-      currency: data.currency,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updates)
     .eq("id", id)
     .select()
     .single()
 
   if (error) {
-    console.error("updateClient error:", error.message)
+    console.error("updateClient error:", error)
+    console.error("updateClient error details:", error.message, error.details, error.hint)
     return null
   }
-  return updated as Client
-}
 
-// =====================
-// UPDATE: Full client update (with all fields)
-// =====================
-
-export async function updateClientFull(
-  id: string,
-  updates: UpdateClientInput
-): Promise<Client | null> {
-  const supabase = await createClient()
-
-  const { error, data: updated } = await supabase
-    .from("clients")
-    .update({
-      ...updates,
-      updated_at: new Date().toISOString(),
-    })
-    .eq("id", id)
-    .select()
-    .single()
-
-  if (error) {
-    console.error("updateClientFull error:", error.message)
-    return null
-  }
+  console.log(`updateClient: Successfully updated client ${id}`)
   return updated as Client
 }
 
