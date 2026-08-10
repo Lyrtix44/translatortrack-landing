@@ -11,7 +11,7 @@ export interface Project {
   source_language: string
   target_language: string
   word_count: number
-  invoice_total: number
+  invoice_total: number  // this is read-only from DB, we never write it
   currency: string
   rate_per_word: number
   status: ProjectStatus
@@ -74,19 +74,13 @@ export async function getProject(id: string): Promise<Project | null> {
 export async function createProject(input: CreateProjectInput): Promise<Project | null> {
   const supabase = await createClient()
 
-  // Get the current user
   const { data: { user }, error: userError } = await supabase.auth.getUser()
-  console.log("🔍 createProject – user:", user?.id)
-
-  if (userError) {
-    console.error("❌ User error:", userError)
-  }
-
-  if (!user) {
-    console.error("❌ No user found")
+  if (userError || !user) {
+    console.error("createProject – user error:", userError)
     return null
   }
 
+  // ❗ Do NOT include invoice_total – it's a generated column!
   const dataToInsert = {
     user_id: user.id,
     client_id: input.client_id,
@@ -98,9 +92,7 @@ export async function createProject(input: CreateProjectInput): Promise<Project 
     currency: input.currency,
     deadline: input.deadline,
     status: "in_progress",
-    invoice_total: input.word_count * input.rate_per_word,
   }
-  console.log("🔍 Inserting data:", JSON.stringify(dataToInsert, null, 2))
 
   const { data, error } = await supabase
     .from("projects")
@@ -109,12 +101,10 @@ export async function createProject(input: CreateProjectInput): Promise<Project 
     .single()
 
   if (error) {
-    console.error("❌ Supabase error:", error.message)
-    console.error("❌ Full error object:", JSON.stringify(error, null, 2))
+    console.error("createProject error:", error.message)
     return null
   }
 
-  console.log("✅ Project created:", data)
   return data
 }
 
@@ -139,28 +129,26 @@ export async function updateProject(
 ): Promise<Project | null> {
   const supabase = await createClient()
 
-  // Fetch current project to get existing values
   const current = await getProject(id)
   if (!current) return null
 
-  const newWordCount = input.word_count ?? current.word_count
-  const newRate = input.rate_per_word ?? current.rate_per_word
-  const invoice_total = newWordCount * newRate
+  // Build update object – again, no invoice_total
+  const updates: any = {}
+
+  if (input.client_id !== undefined) updates.client_id = input.client_id
+  if (input.title !== undefined) updates.title = input.title
+  if (input.source_language !== undefined) updates.source_language = input.source_language
+  if (input.target_language !== undefined) updates.target_language = input.target_language
+  if (input.word_count !== undefined) updates.word_count = input.word_count
+  if (input.rate_per_word !== undefined) updates.rate_per_word = input.rate_per_word
+  if (input.currency !== undefined) updates.currency = input.currency
+  if (input.deadline !== undefined) updates.deadline = input.deadline
+  // updated_at will be set automatically if you have a trigger, or we can set it manually:
+  updates.updated_at = new Date().toISOString()
 
   const { data, error } = await supabase
     .from("projects")
-    .update({
-      client_id: input.client_id ?? current.client_id,
-      title: input.title ?? current.title,
-      source_language: input.source_language ?? current.source_language,
-      target_language: input.target_language ?? current.target_language,
-      word_count: newWordCount,
-      rate_per_word: newRate,
-      currency: input.currency ?? current.currency,
-      deadline: input.deadline !== undefined ? input.deadline : current.deadline,
-      invoice_total: invoice_total,
-      updated_at: new Date().toISOString(),
-    })
+    .update(updates)
     .eq("id", id)
     .select()
     .single()
@@ -170,7 +158,7 @@ export async function updateProject(
     return null
   }
 
-  return data as Project
+  return data
 }
 
 export async function getDashboardStats() {
