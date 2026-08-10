@@ -7,6 +7,7 @@ import { createClient } from "@/lib/supabase/server"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { InvoicePDF } from "@/components/invoices/InvoicePDF"
 import { sendInvoiceEmail } from "@/lib/email/sendInvoiceEmail"
+import type { InvoiceStatus } from "@/lib/db/invoices"  // ← ADD THIS IMPORT
 
 export async function markInvoiceSentAction(invoiceId: string): Promise<boolean> {
   await requireAuth()
@@ -25,8 +26,6 @@ export async function markInvoicePaidAction(invoiceId: string): Promise<boolean>
   }
   return ok
 }
-
-// app/actions/invoices.tsx (add this below markInvoicePaidAction)
 
 export async function markInvoiceSentManuallyAction(invoiceId: string): Promise<boolean> {
   await requireAuth()
@@ -113,4 +112,37 @@ export async function sendInvoiceAction(invoiceId: string): Promise<{ success: b
   } else {
     return { success: false, error: "Invoice sent but status update failed." }
   }
+}
+
+// ✨ NEW: Update invoice status directly (used by InvoiceStatusDropdown)
+export async function updateInvoiceStatusAction(
+  invoiceId: string,
+  status: InvoiceStatus
+): Promise<boolean> {
+  await requireAuth()
+  const supabase = await createClient()
+
+  const updateData: any = {
+    status,
+    paid_at: status === "paid" ? new Date().toISOString() : null,
+  }
+
+  // Only set issued_at if changing to "sent"
+  if (status === "sent") {
+    updateData.issued_at = new Date().toISOString()
+  }
+
+  const { error } = await supabase
+    .from("invoices")
+    .update(updateData)
+    .eq("id", invoiceId)
+
+  if (error) {
+    console.error("updateInvoiceStatus error:", error.message)
+    return false
+  }
+
+  revalidatePath("/invoices")
+  revalidatePath("/dashboard")
+  return true
 }
