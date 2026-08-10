@@ -6,7 +6,11 @@ import { toast } from "sonner"
 import { Send, CheckCircle2, Plus, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge, INVOICE_STATUS_BADGE } from "@/components/ui/badge"
-import { sendInvoiceAction, markInvoicePaidAction } from "@/app/actions/invoices"
+import {
+  sendInvoiceAction,
+  markInvoicePaidAction,
+  markInvoiceSentManuallyAction,
+} from "@/app/actions/invoices"
 import type { Invoice, InvoiceStatus } from "@/lib/db/invoices"
 
 type InvoiceWithClient = Invoice & { clientName: string }
@@ -19,11 +23,10 @@ const STATUS_TABS: { key: InvoiceStatus | "all"; label: string }[] = [
   { key: "overdue", label: "Overdue" },
 ]
 
-// InvoiceActions now includes a download button for every invoice
 function InvoiceActions({ invoice, size = "sm" }: { invoice: Invoice; size?: "sm" | "md" }) {
   const [isPending, startTransition] = useTransition()
 
-  // ✨ Updated to send real email
+  // Send with email (uses Resend)
   function handleSend() {
     startTransition(async () => {
       const result = await sendInvoiceAction(invoice.id)
@@ -31,6 +34,18 @@ function InvoiceActions({ invoice, size = "sm" }: { invoice: Invoice; size?: "sm
         toast.success(`Invoice ${invoice.invoice_number} sent to client.`)
       } else {
         toast.error(result.error || "Couldn't send the invoice.")
+      }
+    })
+  }
+
+  // Manual "mark as sent" – no email required
+  function handleMarkSentManual() {
+    startTransition(async () => {
+      const ok = await markInvoiceSentManuallyAction(invoice.id)
+      if (ok) {
+        toast.success(`Invoice ${invoice.invoice_number} marked as sent.`)
+      } else {
+        toast.error("Couldn't update the invoice.")
       }
     })
   }
@@ -43,7 +58,6 @@ function InvoiceActions({ invoice, size = "sm" }: { invoice: Invoice; size?: "sm
     })
   }
 
-  // Download button is always shown
   const downloadButton = (
     <Button
       variant="ghost"
@@ -54,13 +68,24 @@ function InvoiceActions({ invoice, size = "sm" }: { invoice: Invoice; size?: "sm
     </Button>
   )
 
-  // Status-specific action button
   let statusButton = null
+
   if (invoice.status === "draft") {
     statusButton = (
-      <Button variant="ghost" size={size} onClick={handleSend} disabled={isPending}>
-        <Send size={14} /> Send
-      </Button>
+      <div className="flex items-center gap-1">
+        <Button variant="ghost" size={size} onClick={handleSend} disabled={isPending}>
+          <Send size={14} /> Send
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={handleMarkSentManual}
+          disabled={isPending}
+          className="text-xs text-slate-mid px-2"
+        >
+          (mark sent)
+        </Button>
+      </div>
     )
   } else if (invoice.status === "sent" || invoice.status === "overdue") {
     statusButton = (
@@ -70,7 +95,6 @@ function InvoiceActions({ invoice, size = "sm" }: { invoice: Invoice; size?: "sm
     )
   }
 
-  // Return both buttons in a flex container
   return (
     <div className="flex items-center gap-1 justify-end">
       {downloadButton}

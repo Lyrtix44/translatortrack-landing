@@ -26,6 +26,18 @@ export async function markInvoicePaidAction(invoiceId: string): Promise<boolean>
   return ok
 }
 
+// app/actions/invoices.tsx (add this below markInvoicePaidAction)
+
+export async function markInvoiceSentManuallyAction(invoiceId: string): Promise<boolean> {
+  await requireAuth()
+  const ok = await markInvoiceSent(invoiceId)
+  if (ok) {
+    revalidatePath("/invoices")
+    revalidatePath(`/invoices/${invoiceId}`)
+  }
+  return ok
+}
+
 export async function generateInvoiceAction(projectId: string) {
   await requireAuth()
   const invoice = await createInvoiceFromProject(projectId)
