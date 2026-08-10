@@ -49,11 +49,31 @@ export async function createProjectAction(
 
   console.log("🔍 createProjectAction – plan:", profile?.plan)
 
-  if (profile?.plan === "free") {
-    const existingProjects = await getProjects()
-    console.log("🔍 createProjectAction – existing projects:", existingProjects.length)
+  // 🔥 FIX: Treat null as 'free'
+  const plan = profile?.plan ?? "free"
 
-    if (existingProjects.length >= FREE_PROJECT_LIMIT) {
+  if (plan === "free") {
+    // 🔥 FIX: Direct count from Supabase instead of getProjects()
+    const { count, error: countError } = await supabase
+      .from("projects")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+
+    console.log("🔍 createProjectAction – direct project count:", count)
+
+    if (countError) {
+      console.error("❌ createProjectAction – Count error:", countError)
+      // Fallback to getProjects if count fails
+      const existingProjects = await getProjects()
+      console.log("🔍 createProjectAction – fallback projects count:", existingProjects.length)
+      if (existingProjects.length >= FREE_PROJECT_LIMIT) {
+        console.log("❌ createProjectAction – Free plan limit reached (fallback)")
+        return {
+          project: null,
+          error: `Free plan is limited to ${FREE_PROJECT_LIMIT} active projects. Upgrade to Pro for unlimited projects.`,
+        }
+      }
+    } else if ((count ?? 0) >= FREE_PROJECT_LIMIT) {
       console.log("❌ createProjectAction – Free plan limit reached")
       return {
         project: null,
