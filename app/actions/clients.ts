@@ -42,7 +42,7 @@ export async function createClientAction(
   return { error: null, success: true }
 }
 
-// ✨ NEW: Update an existing client
+// ✨ Update an existing client with error handling
 export async function updateClientAction(
   clientId: string,
   formData: FormData
@@ -69,31 +69,38 @@ export async function updateClientAction(
     return { success: false, error: "Client name is required." }
   }
 
-  console.log("updateClientAction: Calling updateClient with:", {
-    id: clientId,
-    data: {
+  try {
+    console.log("updateClientAction: Calling updateClient with:", {
+      id: clientId,
+      data: {
+        name,
+        email,
+        default_rate: defaultRate ? parseFloat(defaultRate) : null,
+        currency,
+      },
+    })
+
+    const client = await updateClient(clientId, {
       name,
       email,
       default_rate: defaultRate ? parseFloat(defaultRate) : null,
       currency,
-    },
-  })
+    })
 
-  const client = await updateClient(clientId, {
-    name,
-    email,
-    default_rate: defaultRate ? parseFloat(defaultRate) : null,
-    currency,
-  })
+    if (!client) {
+      console.error("updateClientAction: updateClient returned null for clientId:", clientId)
+      // We need to get the actual error from the DB function – it should have logged it
+      return { success: false, error: "Database update failed – check server logs for details." }
+    }
 
-  if (!client) {
-    console.error("updateClientAction: updateClient returned null for clientId:", clientId)
-    return { success: false, error: "Couldn't update client." }
+    console.log("updateClientAction: Successfully updated client:", client.id)
+
+    revalidatePath("/clients")
+    revalidatePath(`/clients/${clientId}`)
+    return { success: true }
+  } catch (error) {
+    console.error("updateClientAction: Caught exception:", error)
+    const errorMessage = error instanceof Error ? error.message : "Unknown error occurred."
+    return { success: false, error: errorMessage }
   }
-
-  console.log("updateClientAction: Successfully updated client:", client.id)
-
-  revalidatePath("/clients")
-  revalidatePath(`/clients/${clientId}`)
-  return { success: true }
 }
