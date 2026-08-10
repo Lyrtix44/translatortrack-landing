@@ -23,13 +23,18 @@ interface CreateProjectResult {
 export async function createProjectAction(
   input: CreateProjectInput
 ): Promise<CreateProjectResult> {
+  console.log("🔍 createProjectAction input:", JSON.stringify(input, null, 2))
+
   const supabase = await createClient()
 
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
+  console.log("🔍 createProjectAction – user:", user?.id)
+
   if (!user) {
+    console.error("❌ createProjectAction – No user found")
     return {
       project: null,
       error: "Not authenticated.",
@@ -42,10 +47,14 @@ export async function createProjectAction(
     .eq("id", user.id)
     .single()
 
+  console.log("🔍 createProjectAction – plan:", profile?.plan)
+
   if (profile?.plan === "free") {
     const existingProjects = await getProjects()
+    console.log("🔍 createProjectAction – existing projects:", existingProjects.length)
 
     if (existingProjects.length >= FREE_PROJECT_LIMIT) {
+      console.log("❌ createProjectAction – Free plan limit reached")
       return {
         project: null,
         error: `Free plan is limited to ${FREE_PROJECT_LIMIT} active projects. Upgrade to Pro for unlimited projects.`,
@@ -53,7 +62,9 @@ export async function createProjectAction(
     }
   }
 
+  console.log("🔍 createProjectAction – Calling createProject...")
   const project = await createProject(input)
+  console.log("🔍 createProjectAction – createProject result:", project ? "Success" : "Failed")
 
   if (project) {
     revalidatePath("/dashboard")

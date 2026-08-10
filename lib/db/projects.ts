@@ -75,32 +75,46 @@ export async function createProject(input: CreateProjectInput): Promise<Project 
   const supabase = await createClient()
 
   // Get the current user
-  const { data: { user } } = await supabase.auth.getUser()
-  if (!user) return null
+  const { data: { user }, error: userError } = await supabase.auth.getUser()
+  console.log("🔍 createProject – user:", user?.id)
 
-  const { data, error } = await supabase
-    .from("projects")
-    .insert({
-      user_id: user.id,
-      client_id: input.client_id,
-      title: input.title,
-      source_language: input.source_language,
-      target_language: input.target_language,
-      word_count: input.word_count,
-      rate_per_word: input.rate_per_word,
-      currency: input.currency,
-      deadline: input.deadline,
-      status: "in_progress",
-      invoice_total: input.word_count * input.rate_per_word,
-    })
-    .select()
-    .single()
+  if (userError) {
+    console.error("❌ User error:", userError)
+  }
 
-  if (error || !data) {
-    console.error("createProject error:", error?.message)
+  if (!user) {
+    console.error("❌ No user found")
     return null
   }
 
+  const dataToInsert = {
+    user_id: user.id,
+    client_id: input.client_id,
+    title: input.title,
+    source_language: input.source_language,
+    target_language: input.target_language,
+    word_count: input.word_count,
+    rate_per_word: input.rate_per_word,
+    currency: input.currency,
+    deadline: input.deadline,
+    status: "in_progress",
+    invoice_total: input.word_count * input.rate_per_word,
+  }
+  console.log("🔍 Inserting data:", JSON.stringify(dataToInsert, null, 2))
+
+  const { data, error } = await supabase
+    .from("projects")
+    .insert(dataToInsert)
+    .select()
+    .single()
+
+  if (error) {
+    console.error("❌ Supabase error:", error.message)
+    console.error("❌ Full error object:", JSON.stringify(error, null, 2))
+    return null
+  }
+
+  console.log("✅ Project created:", data)
   return data
 }
 
@@ -119,15 +133,11 @@ export async function updateProjectStatus(id: string, status: ProjectStatus): Pr
   return true
 }
 
-// ✨ NEW: Update a project's details
 export async function updateProject(
   id: string,
   input: Partial<CreateProjectInput>
 ): Promise<Project | null> {
   const supabase = await createClient()
-
-  // If rate or word count changed, recalculate invoice_total
-  let invoice_total: number | undefined
 
   // Fetch current project to get existing values
   const current = await getProject(id)
@@ -135,7 +145,7 @@ export async function updateProject(
 
   const newWordCount = input.word_count ?? current.word_count
   const newRate = input.rate_per_word ?? current.rate_per_word
-  invoice_total = newWordCount * newRate
+  const invoice_total = newWordCount * newRate
 
   const { data, error } = await supabase
     .from("projects")
@@ -163,7 +173,6 @@ export async function updateProject(
   return data as Project
 }
 
-// Dashboard stats functions
 export async function getDashboardStats() {
   const supabase = await createClient()
   const now = new Date()
