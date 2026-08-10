@@ -1,5 +1,6 @@
 // app/(app)/clients/page.tsx
-import { Users } from "lucide-react"
+import Link from "next/link"
+import { Users, Pencil } from "lucide-react"
 import { getClients } from "@/lib/db/clients"
 import { getProjects } from "@/lib/db/projects"
 import { AddClientForm } from "@/components/clients/AddClientForm"
@@ -35,13 +36,29 @@ export default async function ClientsPage() {
                 const count = projectCountByClient.get(c.id) ?? 0
                 return (
                   <Card key={c.id} hoverable className="p-4 flex items-center justify-between">
-                    <div className="min-w-0">
-                      <p className="text-ink font-medium text-sm truncate">{c.name}</p>
-                      {c.email && <p className="text-slate-mid text-xs truncate">{c.email}</p>}
+                    <div className="min-w-0 flex-1">
+                      <Link
+                        href={`/clients/${c.id}/edit`}
+                        className="text-ink font-medium text-sm hover:text-amber transition-colors truncate block"
+                      >
+                        {c.name}
+                      </Link>
+                      {c.email && (
+                        <p className="text-slate-mid text-xs truncate">{c.email}</p>
+                      )}
                     </div>
-                    <span className="text-xs text-slate-mid shrink-0 ml-3">
-                      {count} {count === 1 ? "project" : "projects"}
-                    </span>
+                    <div className="flex items-center gap-3 shrink-0 ml-3">
+                      <span className="text-xs text-slate-mid">
+                        {count} {count === 1 ? "project" : "projects"}
+                      </span>
+                      <Link
+                        href={`/clients/${c.id}/edit`}
+                        className="text-slate-mid hover:text-ink transition-colors"
+                        title="Edit client"
+                      >
+                        <Pencil size={14} />
+                      </Link>
+                    </div>
                   </Card>
                 )
               })}

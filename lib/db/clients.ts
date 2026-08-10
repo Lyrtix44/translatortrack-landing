@@ -1,3 +1,4 @@
+// lib/db/clients.ts
 import { createClient } from "@/lib/supabase/server"
 
 // =====================
@@ -38,6 +39,8 @@ export interface UpdateClientInput {
   company?: string | null
   address?: string | null
   notes?: string | null
+  default_rate?: number | null
+  currency?: string
 }
 
 // =====================
@@ -61,12 +64,10 @@ export async function getClients(): Promise<Client[]> {
 }
 
 // =====================
-// READ: Get one client
+// READ: Get one client by ID
 // =====================
 
-export async function getClientById(
-  id: string
-): Promise<Client | null> {
+export async function getClient(id: string): Promise<Client | null> {
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -76,11 +77,16 @@ export async function getClientById(
     .single()
 
   if (error) {
-    console.error("getClientById error:", error.message)
+    console.error("getClient error:", error.message)
     return null
   }
 
   return data as Client
+}
+
+// Alias for backward compatibility
+export async function getClientById(id: string): Promise<Client | null> {
+  return getClient(id)
 }
 
 // =====================
@@ -105,6 +111,7 @@ export async function createClientRecord(
     .insert({
       ...input,
       user_id: user.id,
+      currency: "USD",
     })
     .select()
     .single()
@@ -118,38 +125,72 @@ export async function createClientRecord(
 }
 
 // =====================
-// UPDATE: Edit client
+// UPDATE: Edit client (returns updated client)
 // =====================
 
 export async function updateClient(
   id: string,
-  updates: UpdateClientInput
-): Promise<boolean> {
+  data: {
+    name?: string
+    email?: string | null
+    default_rate?: number | null
+    currency?: string
+  }
+): Promise<Client | null> {
   const supabase = await createClient()
 
-  const { error } = await supabase
+  const { error, data: updated } = await supabase
+    .from("clients")
+    .update({
+      name: data.name,
+      email: data.email,
+      default_rate: data.default_rate,
+      currency: data.currency,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error("updateClient error:", error.message)
+    return null
+  }
+  return updated as Client
+}
+
+// =====================
+// UPDATE: Full client update (with all fields)
+// =====================
+
+export async function updateClientFull(
+  id: string,
+  updates: UpdateClientInput
+): Promise<Client | null> {
+  const supabase = await createClient()
+
+  const { error, data: updated } = await supabase
     .from("clients")
     .update({
       ...updates,
       updated_at: new Date().toISOString(),
     })
     .eq("id", id)
+    .select()
+    .single()
 
   if (error) {
-    console.error("updateClient error:", error.message)
-    return false
+    console.error("updateClientFull error:", error.message)
+    return null
   }
-
-  return true
+  return updated as Client
 }
 
 // =====================
 // DELETE: Remove client
 // =====================
 
-export async function deleteClient(
-  id: string
-): Promise<boolean> {
+export async function deleteClient(id: string): Promise<boolean> {
   const supabase = await createClient()
 
   const { error } = await supabase
