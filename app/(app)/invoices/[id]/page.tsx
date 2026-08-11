@@ -57,7 +57,12 @@ function InvoiceActions({ invoice }: { invoice: any }) {
       {(invoice.status === "sent" || invoice.status === "overdue") && (
         <form action={markInvoicePaidFormAction}>
           <input type="hidden" name="invoiceId" value={invoice.id} />
-          <Button type="submit" variant="success" size="sm">
+          <Button
+            type="submit"
+            variant="primary"
+            size="sm"
+            className="bg-success hover:bg-success/90 text-white border-success"
+          >
             <CheckCircle2 size={16} className="mr-1.5" />
             Mark as Paid
           </Button>
