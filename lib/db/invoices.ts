@@ -19,6 +19,7 @@ export interface Invoice {
   payment_terms: number
   notes: string | null
   created_at: string
+  email_sent_at: string | null  // ✅ Added
 }
 
 // Create an invoice pre-filled from project data
@@ -52,6 +53,7 @@ export async function createInvoiceFromProject(
       status: "draft",
       payment_terms: 30,
       due_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      email_sent_at: null, // ✅ explicitly set to null
     })
     .select()
     .single()
@@ -135,12 +137,13 @@ export async function getOutstandingPayments(): Promise<{ total: number; count: 
   }
 }
 
-// ✨ NEW: Get all invoices with client name for the list page
-export async function getInvoices(): Promise<(Invoice & { clientName: string })[]> {
+// ✨ NEW: Get all invoices with client name and email for the list page
+export async function getInvoices(): Promise<(Invoice & { clientName: string; clients?: { email: string | null } | null })[]> {
   const supabase = await createClient()
+  // ✅ Include client email so we can show email status button
   const { data, error } = await supabase
     .from("invoices")
-    .select("*, clients(name)")
+    .select("*, clients(name, email)")  // ✅ added email
     .order("created_at", { ascending: false })
 
   if (error || !data) {
@@ -151,6 +154,7 @@ export async function getInvoices(): Promise<(Invoice & { clientName: string })[
   return data.map((inv) => ({
     ...inv,
     clientName: (inv.clients as { name: string } | null)?.name ?? "Unknown",
+    clients: inv.clients as { name: string; email: string | null } | null,
   }))
 }
 
