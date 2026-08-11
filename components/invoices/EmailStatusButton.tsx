@@ -1,3 +1,4 @@
+// components/invoices/EmailStatusButton.tsx
 "use client"
 import { useTransition } from "react"
 import { toast } from "sonner"
@@ -13,6 +14,7 @@ interface EmailStatusButtonProps {
 export function EmailStatusButton({ invoice, clientEmail }: EmailStatusButtonProps) {
   const [isPending, startTransition] = useTransition()
 
+  // Check if email has been sent (email_sent_at is not null)
   const isSent = !!invoice.email_sent_at
 
   async function handleSend() {
@@ -31,14 +33,23 @@ export function EmailStatusButton({ invoice, clientEmail }: EmailStatusButtonPro
     })
   }
 
+  // If already sent, show a green "Sent" label with a checkmark
   if (isSent) {
+    const sentDate = invoice.email_sent_at
+      ? new Date(invoice.email_sent_at).toLocaleDateString()
+      : ""
+
     return (
-      <span className="text-success flex items-center gap-1 text-sm font-medium" title={`Sent on ${new Date(invoice.email_sent_at).toLocaleDateString()}`}>
+      <span
+        className="text-success flex items-center gap-1 text-sm font-medium"
+        title={sentDate ? `Sent on ${sentDate}` : "Sent"}
+      >
         <MailCheck size={16} /> Sent
       </span>
     )
   }
 
+  // Otherwise, show a mail icon button
   return (
     <button
       onClick={handleSend}
