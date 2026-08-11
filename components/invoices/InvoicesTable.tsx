@@ -5,6 +5,7 @@ import { Plus, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { InvoiceStatusDropdown } from "./InvoiceStatusDropdown"
+import { EmailStatusButton } from "./EmailStatusButton"
 import type { Invoice, InvoiceStatus } from "@/lib/db/invoices"
 
 type InvoiceWithClient = Invoice & { clientName: string; clients?: { email: string | null } | null }
@@ -75,6 +76,7 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceWithClient[] }) {
               <th className="text-left font-medium text-slate-mid px-4 py-3">Amount</th>
               <th className="text-left font-medium text-slate-mid px-4 py-3">Status</th>
               <th className="text-left font-medium text-slate-mid px-4 py-3">Due</th>
+              <th className="text-center font-medium text-slate-mid px-4 py-3">Email</th>
               <th className="text-center font-medium text-slate-mid px-4 py-3">PDF</th>
             </tr>
           </thead>
@@ -94,6 +96,9 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceWithClient[] }) {
                   {inv.due_at
                     ? new Date(inv.due_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })
                     : "—"}
+                </td>
+                <td className="px-4 py-3 text-center">
+                  <EmailStatusButton invoice={inv} clientEmail={inv.clients?.email ?? null} />
                 </td>
                 <td className="px-4 py-3 text-center">
                   <DownloadButton invoice={inv} />
@@ -120,7 +125,10 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceWithClient[] }) {
             <p className="text-xs text-slate-mid">{inv.clientName}</p>
             <div className="flex items-center justify-between mt-2">
               <span className="text-ink font-medium text-sm">${inv.amount.toFixed(2)}</span>
-              <DownloadButton invoice={inv} />
+              <div className="flex items-center gap-2">
+                <EmailStatusButton invoice={inv} clientEmail={inv.clients?.email ?? null} />
+                <DownloadButton invoice={inv} />
+              </div>
             </div>
           </Card>
         ))}

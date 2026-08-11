@@ -1,14 +1,21 @@
 // app/actions/invoices.tsx
 "use server"
 import { revalidatePath } from "next/cache"
-import { markInvoiceSent, markInvoicePaid, createInvoiceFromProject } from "@/lib/db/invoices"
+import {
+  markInvoiceSent,
+  markInvoicePaid,
+  createInvoiceFromProject,
+} from "@/lib/db/invoices"
 import { requireAuth } from "@/lib/auth/require-auth"
 import { createClient } from "@/lib/supabase/server"
 import { renderToBuffer } from "@react-pdf/renderer"
 import { InvoicePDF } from "@/components/invoices/InvoicePDF"
 import { sendInvoiceEmail } from "@/lib/email/sendInvoiceEmail"
-import type { InvoiceStatus } from "@/lib/db/invoices"  // ← ADD THIS IMPORT
+import type { InvoiceStatus } from "@/lib/db/invoices"
 
+// ============================================
+// 1. Mark as sent (legacy, used by some places)
+// ============================================
 export async function markInvoiceSentAction(invoiceId: string): Promise<boolean> {
   await requireAuth()
   const ok = await markInvoiceSent(invoiceId)
@@ -16,6 +23,9 @@ export async function markInvoiceSentAction(invoiceId: string): Promise<boolean>
   return ok
 }
 
+// ============================================
+// 2. Mark as paid
+// ============================================
 export async function markInvoicePaidAction(invoiceId: string): Promise<boolean> {
   await requireAuth()
   const ok = await markInvoicePaid(invoiceId)
@@ -27,6 +37,9 @@ export async function markInvoicePaidAction(invoiceId: string): Promise<boolean>
   return ok
 }
 
+// ============================================
+// 3. Mark as sent manually (without email)
+// ============================================
 export async function markInvoiceSentManuallyAction(invoiceId: string): Promise<boolean> {
   await requireAuth()
   const ok = await markInvoiceSent(invoiceId)
@@ -37,6 +50,9 @@ export async function markInvoiceSentManuallyAction(invoiceId: string): Promise<
   return ok
 }
 
+// ============================================
+// 4. Generate invoice from a project
+// ============================================
 export async function generateInvoiceAction(projectId: string) {
   await requireAuth()
   const invoice = await createInvoiceFromProject(projectId)
@@ -47,6 +63,9 @@ export async function generateInvoiceAction(projectId: string) {
   return { invoice, error: invoice ? null : "Couldn't generate the invoice." }
 }
 
+// ============================================
+// 5. Send invoice email + mark as sent
+// ============================================
 export async function sendInvoiceAction(invoiceId: string): Promise<{ success: boolean; error?: string }> {
   const user = await requireAuth()
   const supabase = await createClient()
@@ -103,18 +122,33 @@ export async function sendInvoiceAction(invoiceId: string): Promise<{ success: b
     return { success: false, error: "Failed to send email. Please try again." }
   }
 
-  // 5. Mark invoice as sent (only if email succeeded)
-  const sent = await markInvoiceSent(invoiceId)
-  if (sent) {
-    revalidatePath("/invoices")
-    revalidatePath(`/invoices/${invoiceId}`)
-    return { success: true }
-  } else {
-    return { success: false, error: "Invoice sent but status update failed." }
+  // 5. Update invoice: status = sent, issued_at, and email_sent_at
+  const now = new Date().toISOString()
+  const { error: updateError } = await supabase
+    .from("invoices")
+    .update({
+      status: "sent",
+      issued_at: now,
+      email_sent_at: now,
+    })
+    .eq("id", invoiceId)
+
+  if (updateError) {
+    console.error("Failed to update invoice after email:", updateError)
+    return { success: false, error: "Email sent but failed to update invoice status." }
   }
+
+  // 6. Revalidate paths
+  revalidatePath("/invoices")
+  revalidatePath(`/invoices/${invoiceId}`)
+  revalidatePath("/dashboard")
+
+  return { success: true }
 }
 
-// ✨ NEW: Update invoice status directly (used by InvoiceStatusDropdown)
+// ============================================
+// 6. Update invoice status directly (used by dropdown)
+// ============================================
 export async function updateInvoiceStatusAction(
   invoiceId: string,
   status: InvoiceStatus

@@ -42,7 +42,8 @@ export function InvoiceStatusDropdown({ invoice, clientEmail }: InvoiceStatusDro
       setOptimisticStatus(newStatus)
 
       // If changing to "sent" and client has email, send the email
-      if (newStatus === "sent" && clientEmail) {
+      if (newStatus === "sent" && clientEmail && !invoice.email_sent_at) {
+        // Only send if not already sent
         const result = await sendInvoiceAction(invoice.id)
         if (!result.success) {
           toast.error(result.error || "Failed to send email.")
@@ -51,7 +52,7 @@ export function InvoiceStatusDropdown({ invoice, clientEmail }: InvoiceStatusDro
         }
         toast.success(`Invoice ${invoice.invoice_number} sent to ${clientEmail}`)
       } else {
-        // For other statuses, just update the status
+        // For other statuses (or if email already sent), just update the status
         const ok = await updateInvoiceStatusAction(invoice.id, newStatus)
         if (!ok) {
           toast.error("Couldn't update status.")
@@ -62,6 +63,9 @@ export function InvoiceStatusDropdown({ invoice, clientEmail }: InvoiceStatusDro
       }
     })
   }
+
+  // Determine if "Draft" should be disabled: when email has been sent
+  const isDraftDisabled = !!invoice.email_sent_at
 
   return (
     <select
@@ -74,11 +78,14 @@ export function InvoiceStatusDropdown({ invoice, clientEmail }: InvoiceStatusDro
         ${getColorClasses(badge.variant)}
       `}
     >
-      {Object.entries(INVOICE_STATUS_BADGE).map(([key, value]) => (
-        <option key={key} value={key}>
-          {value.label}
-        </option>
-      ))}
+      {Object.entries(INVOICE_STATUS_BADGE).map(([key, value]) => {
+        const isDisabled = key === "draft" && isDraftDisabled
+        return (
+          <option key={key} value={key} disabled={isDisabled}>
+            {value.label} {isDisabled ? "(locked)" : ""}
+          </option>
+        )
+      })}
     </select>
   )
 }
