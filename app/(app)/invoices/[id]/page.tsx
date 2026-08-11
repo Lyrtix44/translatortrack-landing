@@ -4,11 +4,10 @@ import Link from "next/link"
 import { createClient } from "@/lib/supabase/server"
 import { getInvoiceById } from "@/lib/db/invoices"
 import { getProject } from "@/lib/db/projects"
-import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge, INVOICE_STATUS_BADGE } from "@/components/ui/badge"
-import { Download, Mail, CheckCircle2, ArrowLeft } from "lucide-react"
-import { markInvoicePaidFormAction } from "@/app/actions/invoices"
+import { ArrowLeft } from "lucide-react"
+import { InvoiceDetailActions } from "@/components/invoices/InvoiceDetailActions"
 
 // Helper to format currency
 const formatCurrency = (amount: number, currency = "USD") =>
@@ -16,64 +15,6 @@ const formatCurrency = (amount: number, currency = "USD") =>
     style: "currency",
     currency,
   }).format(amount)
-
-// Status timeline component (client component with actions)
-function InvoiceActions({ invoice }: { invoice: any }) {
-  return (
-    <div className="flex flex-wrap items-center gap-3">
-      <Button
-        variant="primary"
-        size="sm"
-        onClick={() => window.open(`/api/invoices/${invoice.id}/pdf`, "_blank")}
-      >
-        <Download size={16} className="mr-1.5" />
-        Download PDF
-      </Button>
-      {invoice.status === "draft" && (
-        <Button
-          variant="secondary"
-          size="sm"
-          onClick={() => {
-            const clientEmail = invoice.clients?.email
-            if (!clientEmail) {
-              alert("Client has no email address.")
-              return
-            }
-            const subject = encodeURIComponent(`Invoice ${invoice.invoice_number}`)
-            const pdfLink = `${window.location.origin}/api/invoices/${invoice.id}/pdf`
-            const body = encodeURIComponent(
-              `Dear ${invoice.clientName},\n\n` +
-              `Please find your invoice ${invoice.invoice_number} attached.\n\n` +
-              `You can download it here: ${pdfLink}\n\n` +
-              `Thank you,\nTranslatorTrack`
-            )
-            window.open(`mailto:${clientEmail}?subject=${subject}&body=${body}`, "_blank")
-          }}
-        >
-          <Mail size={16} className="mr-1.5" />
-          Send Email
-        </Button>
-      )}
-      {(invoice.status === "sent" || invoice.status === "overdue") && (
-        <form action={markInvoicePaidFormAction}>
-          <input type="hidden" name="invoiceId" value={invoice.id} />
-          <Button
-            type="submit"
-            variant="primary"
-            size="sm"
-            className="bg-success hover:bg-success/90 text-white border-success"
-          >
-            <CheckCircle2 size={16} className="mr-1.5" />
-            Mark as Paid
-          </Button>
-        </form>
-      )}
-      <Link href={`/projects/${invoice.project_id}`}>
-        <Button variant="ghost" size="sm">View Project</Button>
-      </Link>
-    </div>
-  )
-}
 
 export default async function InvoiceDetailPage({
   params,
@@ -93,9 +34,6 @@ export default async function InvoiceDetailPage({
 
   const badge = INVOICE_STATUS_BADGE[invoice.status]
   const isOverdue = invoice.status === "overdue"
-  const isPaid = invoice.status === "paid"
-  const isDraft = invoice.status === "draft"
-
   const statusOrder = ["draft", "sent", "paid", "overdue"]
   const currentIndex = statusOrder.indexOf(invoice.status)
   const progress = currentIndex >= 0 ? (currentIndex / (statusOrder.length - 1)) * 100 : 0
@@ -229,7 +167,7 @@ export default async function InvoiceDetailPage({
 
       <Card className="p-6">
         <h3 className="font-semibold text-ink text-sm mb-4">Actions</h3>
-        <InvoiceActions invoice={invoice} />
+        <InvoiceDetailActions invoice={invoice} />
       </Card>
     </div>
   )
