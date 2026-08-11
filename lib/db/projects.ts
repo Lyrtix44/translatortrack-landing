@@ -11,7 +11,7 @@ export interface Project {
   source_language: string
   target_language: string
   word_count: number
-  invoice_total: number  // this is read-only from DB, we never write it
+  invoice_total: number  // generated column – never write directly
   currency: string
   rate_per_word: number
   status: ProjectStatus
@@ -34,7 +34,6 @@ export interface CreateProjectInput {
 
 export async function getProjects(filters?: { status?: ProjectStatus }): Promise<Project[]> {
   const supabase = await createClient()
-
   let query = supabase
     .from("projects")
     .select('*, clients (name, email, contact_name)')
@@ -45,18 +44,15 @@ export async function getProjects(filters?: { status?: ProjectStatus }): Promise
   }
 
   const { data, error } = await query
-
   if (error || !data) {
     console.error("getProjects error:", error?.message)
     return []
   }
-
   return data
 }
 
 export async function getProject(id: string): Promise<Project | null> {
   const supabase = await createClient()
-
   const { data, error } = await supabase
     .from("projects")
     .select('*, clients (name, email, contact_name)')
@@ -67,13 +63,11 @@ export async function getProject(id: string): Promise<Project | null> {
     console.error("getProject error:", error?.message)
     return null
   }
-
   return data
 }
 
 export async function createProject(input: CreateProjectInput): Promise<Project | null> {
   const supabase = await createClient()
-
   const { data: { user }, error: userError } = await supabase.auth.getUser()
   if (userError || !user) {
     console.error("createProject – user error:", userError)
@@ -104,13 +98,11 @@ export async function createProject(input: CreateProjectInput): Promise<Project 
     console.error("createProject error:", error.message)
     return null
   }
-
   return data
 }
 
 export async function updateProjectStatus(id: string, status: ProjectStatus): Promise<boolean> {
   const supabase = await createClient()
-
   const { error } = await supabase
     .from("projects")
     .update({ status })
@@ -128,13 +120,10 @@ export async function updateProject(
   input: Partial<CreateProjectInput>
 ): Promise<Project | null> {
   const supabase = await createClient()
-
   const current = await getProject(id)
   if (!current) return null
 
-  // Build update object – again, no invoice_total
   const updates: any = {}
-
   if (input.client_id !== undefined) updates.client_id = input.client_id
   if (input.title !== undefined) updates.title = input.title
   if (input.source_language !== undefined) updates.source_language = input.source_language
@@ -143,7 +132,6 @@ export async function updateProject(
   if (input.rate_per_word !== undefined) updates.rate_per_word = input.rate_per_word
   if (input.currency !== undefined) updates.currency = input.currency
   if (input.deadline !== undefined) updates.deadline = input.deadline
-  // updated_at will be set automatically if you have a trigger, or we can set it manually:
   updates.updated_at = new Date().toISOString()
 
   const { data, error } = await supabase
@@ -157,7 +145,6 @@ export async function updateProject(
     console.error("updateProject error:", error.message)
     return null
   }
-
   return data
 }
 

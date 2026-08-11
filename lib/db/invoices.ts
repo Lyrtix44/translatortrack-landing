@@ -19,7 +19,7 @@ export interface Invoice {
   payment_terms: number
   notes: string | null
   created_at: string
-  email_sent_at: string | null  // ✅ Added
+  email_sent_at: string | null
 }
 
 // Create an invoice pre-filled from project data
@@ -28,11 +28,9 @@ export async function createInvoiceFromProject(
 ): Promise<Invoice | null> {
   const supabase = await createClient()
 
-  // 1. Fetch the project
   const project = await getProject(projectId)
   if (!project) return null
 
-  // 2. Generate invoice number: INV-2025-001
   const { count } = await supabase
     .from("invoices")
     .select("*", { count: "exact", head: true })
@@ -40,7 +38,6 @@ export async function createInvoiceFromProject(
   const year = new Date().getFullYear()
   const invoiceNumber = `INV-${year}-${String((count ?? 0) + 1).padStart(3, "0")}`
 
-  // 3. Create the invoice
   const { data, error } = await supabase
     .from("invoices")
     .insert({
@@ -53,7 +50,7 @@ export async function createInvoiceFromProject(
       status: "draft",
       payment_terms: 30,
       due_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-      email_sent_at: null, // ✅ explicitly set to null
+      email_sent_at: null,
     })
     .select()
     .single()
@@ -63,53 +60,63 @@ export async function createInvoiceFromProject(
     return null
   }
 
-  // 4. Update the project status to "invoiced"
   await updateProjectStatus(projectId, "invoiced")
-
   return data as Invoice
 }
 
 // Mark invoice as sent
 export async function markInvoiceSent(id: string): Promise<boolean> {
   const supabase = await createClient()
-
   const { error } = await supabase
     .from("invoices")
     .update({ status: "sent", issued_at: new Date().toISOString() })
     .eq("id", id)
-
   return !error
 }
 
 // Mark invoice as paid
 export async function markInvoicePaid(id: string): Promise<boolean> {
   const supabase = await createClient()
-
   const { error } = await supabase
     .from("invoices")
     .update({ status: "paid", paid_at: new Date().toISOString() })
     .eq("id", id)
 
   if (!error) {
-    // Also update the linked project to "paid"
     const { data: invoice } = await supabase
       .from("invoices")
       .select("project_id")
       .eq("id", id)
       .single()
-
     if (invoice?.project_id) {
       await updateProjectStatus(invoice.project_id, "paid")
     }
   }
-
   return !error
 }
 
-// Get all overdue invoices
+// ✨ NEW: Update any 'sent' invoices whose due_at is in the past to 'overdue'
+export async function updateOverdueInvoices(): Promise<number> {
+  const supabase = await createClient()
+  const now = new Date().toISOString()
+
+  const { data, error } = await supabase
+    .from("invoices")
+    .update({ status: "overdue" })
+    .eq("status", "sent")
+    .lt("due_at", now)
+    .select()
+
+  if (error) {
+    console.error("updateOverdueInvoices error:", error)
+    return 0
+  }
+  return data?.length || 0
+}
+
+// Get all overdue invoices (legacy, kept for compatibility)
 export async function getOverdueInvoices(): Promise<Invoice[]> {
   const supabase = await createClient()
-
   const { data, error } = await supabase
     .from("invoices")
     .select("*")
@@ -121,7 +128,6 @@ export async function getOverdueInvoices(): Promise<Invoice[]> {
     console.error("getOverdueInvoices error:", error.message)
     return []
   }
-
   return data as Invoice[]
 }
 
@@ -137,13 +143,17 @@ export async function getOutstandingPayments(): Promise<{ total: number; count: 
   }
 }
 
-// ✨ NEW: Get all invoices with client name and email for the list page
-export async function getInvoices(): Promise<(Invoice & { clientName: string; clients?: { email: string | null } | null })[]> {
+// ✨ Get all invoices – also automatically updates overdue status
+export async function getInvoices(): Promise<
+  (Invoice & { clientName: string; clients?: { email: string | null } | null })[]
+> {
+  // First, update any overdue invoices
+  await updateOverdueInvoices()
+
   const supabase = await createClient()
-  // ✅ Include client email so we can show email status button
   const { data, error } = await supabase
     .from("invoices")
-    .select("*, clients(name, email)")  // ✅ added email
+    .select("*, clients(name, email)")
     .order("created_at", { ascending: false })
 
   if (error || !data) {
@@ -158,7 +168,7 @@ export async function getInvoices(): Promise<(Invoice & { clientName: string; cl
   }))
 }
 
-// ✨ NEW: Get all invoices for a specific project
+// ✨ Get all invoices for a specific project
 export async function getInvoicesByProject(projectId: string): Promise<Invoice[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
