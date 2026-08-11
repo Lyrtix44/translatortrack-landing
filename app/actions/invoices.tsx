@@ -210,3 +210,15 @@ export async function markInvoiceSentAndEmailAction(
   revalidatePath("/dashboard")
   return { success: true }
 }
+
+// ============================================
+// 8. Server action wrapper for form submission to mark as paid
+// ============================================
+export async function markInvoicePaidFormAction(formData: FormData): Promise<void> {
+  const invoiceId = formData.get("invoiceId") as string
+  if (!invoiceId) {
+    console.error("markInvoicePaidFormAction: missing invoiceId")
+    return
+  }
+  await markInvoicePaidAction(invoiceId)
+}

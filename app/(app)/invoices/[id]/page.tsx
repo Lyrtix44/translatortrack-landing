@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
 import { Badge, INVOICE_STATUS_BADGE } from "@/components/ui/badge"
 import { Download, Mail, CheckCircle2, ArrowLeft } from "lucide-react"
-import { markInvoicePaidAction } from "@/app/actions/invoices"
+import { markInvoicePaidFormAction } from "@/app/actions/invoices"
 
 // Helper to format currency
 const formatCurrency = (amount: number, currency = "USD") =>
@@ -34,7 +34,6 @@ function InvoiceActions({ invoice }: { invoice: any }) {
           variant="secondary"
           size="sm"
           onClick={() => {
-            // Open mailto with client email
             const clientEmail = invoice.clients?.email
             if (!clientEmail) {
               alert("Client has no email address.")
@@ -56,7 +55,8 @@ function InvoiceActions({ invoice }: { invoice: any }) {
         </Button>
       )}
       {(invoice.status === "sent" || invoice.status === "overdue") && (
-        <form action={markInvoicePaidAction.bind(null, invoice.id)}>
+        <form action={markInvoicePaidFormAction}>
+          <input type="hidden" name="invoiceId" value={invoice.id} />
           <Button type="submit" variant="success" size="sm">
             <CheckCircle2 size={16} className="mr-1.5" />
             Mark as Paid
@@ -70,7 +70,6 @@ function InvoiceActions({ invoice }: { invoice: any }) {
   )
 }
 
-// The main page component
 export default async function InvoiceDetailPage({
   params,
 }: {
@@ -85,7 +84,6 @@ export default async function InvoiceDetailPage({
   const invoice = await getInvoiceById(id)
   if (!invoice) notFound()
 
-  // Fetch the linked project for more details (optional)
   const project = await getProject(invoice.project_id)
 
   const badge = INVOICE_STATUS_BADGE[invoice.status]
@@ -93,14 +91,12 @@ export default async function InvoiceDetailPage({
   const isPaid = invoice.status === "paid"
   const isDraft = invoice.status === "draft"
 
-  // Determine progress for timeline: draft=0, sent=33, paid=66, overdue=100
   const statusOrder = ["draft", "sent", "paid", "overdue"]
   const currentIndex = statusOrder.indexOf(invoice.status)
   const progress = currentIndex >= 0 ? (currentIndex / (statusOrder.length - 1)) * 100 : 0
 
   return (
     <div className="max-w-3xl mx-auto">
-      {/* Back link */}
       <Link
         href="/invoices"
         className="inline-flex items-center gap-1 text-sm text-slate-mid hover:text-ink transition-colors mb-6"
@@ -109,7 +105,6 @@ export default async function InvoiceDetailPage({
         Back to invoices
       </Link>
 
-      {/* Invoice Header */}
       <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
         <div>
           <h1 className="font-display text-3xl text-ink mb-1">{invoice.invoice_number}</h1>
@@ -124,7 +119,6 @@ export default async function InvoiceDetailPage({
         </Badge>
       </div>
 
-      {/* Client & Amount Quick Info */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <Card className="p-4">
           <p className="text-xs font-semibold text-slate-mid uppercase tracking-wider mb-1">Client</p>
@@ -141,7 +135,6 @@ export default async function InvoiceDetailPage({
         </Card>
       </div>
 
-      {/* Line Items (simplified – we can show a breakdown if we have project details) */}
       <Card className="p-6 mb-6">
         <h3 className="font-semibold text-ink text-sm mb-4">Invoice Items</h3>
         <div className="space-y-2">
@@ -170,19 +163,14 @@ export default async function InvoiceDetailPage({
         </div>
       </Card>
 
-      {/* Payment Status Timeline */}
       <Card className="p-6 mb-6">
         <h3 className="font-semibold text-ink text-sm mb-4">Payment Status</h3>
         <div className="relative flex items-center justify-between px-2">
-          {/* Background line */}
           <div className="absolute top-3 left-0 right-0 h-[2px] bg-border" />
-          {/* Active progress line */}
           <div
             className="absolute top-3 left-0 h-[2px] bg-success transition-all duration-500"
             style={{ width: `${Math.min(progress, 100)}%` }}
           />
-
-          {/* Draft */}
           <div className="flex flex-col items-center z-10">
             <div
               className={`w-5 h-5 rounded-full border-2 ${
@@ -195,8 +183,6 @@ export default async function InvoiceDetailPage({
               Draft
             </span>
           </div>
-
-          {/* Sent */}
           <div className="flex flex-col items-center z-10">
             <div
               className={`w-5 h-5 rounded-full border-2 ${
@@ -209,8 +195,6 @@ export default async function InvoiceDetailPage({
               Sent
             </span>
           </div>
-
-          {/* Paid */}
           <div className="flex flex-col items-center z-10">
             <div
               className={`w-5 h-5 rounded-full border-2 ${
@@ -223,8 +207,6 @@ export default async function InvoiceDetailPage({
               Paid
             </span>
           </div>
-
-          {/* Overdue (only if overdue) */}
           <div className="flex flex-col items-center z-10">
             <div
               className={`w-5 h-5 rounded-full border-2 ${
@@ -240,11 +222,6 @@ export default async function InvoiceDetailPage({
         </div>
       </Card>
 
-      {/* Payment Instructions (from branding) */}
-      {/* We'll fetch profile in the server component – we need to pass it */}
-      {/* For brevity, we'll leave it out; you can add it similarly to the PDF component */}
-
-      {/* Actions */}
       <Card className="p-6">
         <h3 className="font-semibold text-ink text-sm mb-4">Actions</h3>
         <InvoiceActions invoice={invoice} />
