@@ -95,7 +95,7 @@ export async function markInvoicePaid(id: string): Promise<boolean> {
   return !error
 }
 
-// ✨ NEW: Update any 'sent' invoices whose due_at is in the past to 'overdue'
+// ✨ Update any 'sent' invoices whose due_at is in the past to 'overdue'
 export async function updateOverdueInvoices(): Promise<number> {
   const supabase = await createClient()
   const now = new Date().toISOString()
@@ -182,4 +182,27 @@ export async function getInvoicesByProject(projectId: string): Promise<Invoice[]
     return []
   }
   return data as Invoice[]
+}
+
+// ✨ Get a single invoice by ID with client details (for detail page)
+export async function getInvoiceById(id: string): Promise<
+  (Invoice & { clientName: string; clients?: { name: string; email: string | null } | null }) | null
+> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from("invoices")
+    .select("*, clients(name, email)")
+    .eq("id", id)
+    .single()
+
+  if (error || !data) {
+    console.error("getInvoiceById error:", error?.message)
+    return null
+  }
+
+  return {
+    ...data,
+    clientName: (data.clients as { name: string } | null)?.name ?? "Unknown",
+    clients: data.clients as { name: string; email: string | null } | null,
+  }
 }

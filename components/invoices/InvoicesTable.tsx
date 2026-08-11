@@ -1,3 +1,5 @@
+//components/invoices/InvoicesTable.tsx
+
 "use client"
 import { useState, useMemo } from "react"
 import Link from "next/link"
@@ -83,7 +85,11 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceWithClient[] }) {
           <tbody>
             {filtered.map((inv) => (
               <tr key={inv.id} className="border-b border-border last:border-0 hover:bg-paper/50 transition-colors">
-                <td className="px-4 py-3 font-medium text-ink">{inv.invoice_number}</td>
+                <td className="px-4 py-3 font-medium text-ink">
+                  <Link href={`/invoices/${inv.id}`} className="hover:text-amber transition-colors">
+                    {inv.invoice_number}
+                  </Link>
+                </td>
                 <td className="px-4 py-3 text-ink">{inv.clientName}</td>
                 <td className="px-4 py-3 text-ink font-medium">${inv.amount.toFixed(2)}</td>
                 <td className="px-4 py-3">
@@ -120,7 +126,9 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceWithClient[] }) {
         {filtered.map((inv) => (
           <Card key={inv.id} className="p-4">
             <div className="flex items-start justify-between mb-1">
-              <p className="font-medium text-ink text-sm">{inv.invoice_number}</p>
+              <Link href={`/invoices/${inv.id}`} className="font-medium text-ink text-sm hover:text-amber transition-colors">
+                {inv.invoice_number}
+              </Link>
               <InvoiceStatusDropdown
                 invoice={inv}
                 clientEmail={inv.clients?.email ?? null}
