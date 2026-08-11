@@ -2,7 +2,7 @@
 import { useOptimistic, useTransition } from "react"
 import { toast } from "sonner"
 import { INVOICE_STATUS_BADGE } from "@/components/ui/badge"
-import { updateInvoiceStatusAction, sendInvoiceAction } from "@/app/actions/invoices"
+import { updateInvoiceStatusAction } from "@/app/actions/invoices"
 import type { Invoice, InvoiceStatus } from "@/lib/db/invoices"
 
 interface InvoiceStatusDropdownProps {
@@ -41,26 +41,14 @@ export function InvoiceStatusDropdown({ invoice, clientEmail }: InvoiceStatusDro
     startTransition(async () => {
       setOptimisticStatus(newStatus)
 
-      // If changing to "sent" and client has email, send the email
-      if (newStatus === "sent" && clientEmail && !invoice.email_sent_at) {
-        // Only send if not already sent
-        const result = await sendInvoiceAction(invoice.id)
-        if (!result.success) {
-          toast.error(result.error || "Failed to send email.")
-          setOptimisticStatus(invoice.status)
-          return
-        }
-        toast.success(`Invoice ${invoice.invoice_number} sent to ${clientEmail}`)
-      } else {
-        // For other statuses (or if email already sent), just update the status
-        const ok = await updateInvoiceStatusAction(invoice.id, newStatus)
-        if (!ok) {
-          toast.error("Couldn't update status.")
-          setOptimisticStatus(invoice.status)
-          return
-        }
-        toast.success(`Invoice marked as ${newStatus}.`)
+      // Just update the status – email sending is handled by the Email column
+      const ok = await updateInvoiceStatusAction(invoice.id, newStatus)
+      if (!ok) {
+        toast.error("Couldn't update status.")
+        setOptimisticStatus(invoice.status)
+        return
       }
+      toast.success(`Invoice marked as ${newStatus}.`)
     })
   }
 

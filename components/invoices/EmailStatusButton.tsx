@@ -1,9 +1,8 @@
-// components/invoices/EmailStatusButton.tsx
 "use client"
 import { useTransition } from "react"
 import { toast } from "sonner"
 import { Mail, MailCheck, Loader2 } from "lucide-react"
-import { sendInvoiceAction } from "@/app/actions/invoices"
+import { markInvoiceSentAndEmailAction } from "@/app/actions/invoices"
 import type { Invoice } from "@/lib/db/invoices"
 
 interface EmailStatusButtonProps {
@@ -14,26 +13,40 @@ interface EmailStatusButtonProps {
 export function EmailStatusButton({ invoice, clientEmail }: EmailStatusButtonProps) {
   const [isPending, startTransition] = useTransition()
 
-  // Check if email has been sent (email_sent_at is not null)
   const isSent = !!invoice.email_sent_at
 
-  async function handleSend() {
+  function handleSendViaMailto() {
     if (!clientEmail) {
       toast.error("Client has no email address.")
       return
     }
 
+    // Build mailto link
+    const subject = encodeURIComponent(`Invoice ${invoice.invoice_number}`)
+    const pdfLink = `${window.location.origin}/api/invoices/${invoice.id}/pdf`
+    const body = encodeURIComponent(
+      `Dear ${invoice.clientName || "Client"},\n\n` +
+      `Please find your invoice ${invoice.invoice_number} attached.\n\n` +
+      `You can download it here: ${pdfLink}\n\n` +
+      `If you have any questions, please reply to this email.\n\n` +
+      `Thank you,\nTranslatorTrack`
+    )
+    const mailtoLink = `mailto:${clientEmail}?subject=${subject}&body=${body}`
+
+    // Open mail client
+    window.open(mailtoLink, "_blank")
+
+    // Mark invoice as sent (optimistic update)
     startTransition(async () => {
-      const result = await sendInvoiceAction(invoice.id)
+      const result = await markInvoiceSentAndEmailAction(invoice.id)
       if (result.success) {
-        toast.success(`Invoice sent to ${clientEmail}`)
+        toast.success(`Invoice ${invoice.invoice_number} marked as sent.`)
       } else {
-        toast.error(result.error || "Failed to send email.")
+        toast.error(result.error || "Failed to mark as sent.")
       }
     })
   }
 
-  // If already sent, show a green "Sent" label with a checkmark
   if (isSent) {
     const sentDate = invoice.email_sent_at
       ? new Date(invoice.email_sent_at).toLocaleDateString()
@@ -49,13 +62,12 @@ export function EmailStatusButton({ invoice, clientEmail }: EmailStatusButtonPro
     )
   }
 
-  // Otherwise, show a mail icon button
   return (
     <button
-      onClick={handleSend}
+      onClick={handleSendViaMailto}
       disabled={isPending}
       className="text-slate-mid hover:text-ink transition-colors disabled:opacity-50"
-      title="Send invoice email"
+      title="Send invoice email via your default email client"
     >
       {isPending ? <Loader2 size={16} className="animate-spin" /> : <Mail size={16} />}
     </button>

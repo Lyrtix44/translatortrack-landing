@@ -64,7 +64,7 @@ export async function generateInvoiceAction(projectId: string) {
 }
 
 // ============================================
-// 5. Send invoice email + mark as sent
+// 5. Send invoice email + mark as sent (Resend API)
 // ============================================
 export async function sendInvoiceAction(invoiceId: string): Promise<{ success: boolean; error?: string }> {
   const user = await requireAuth()
@@ -179,4 +179,34 @@ export async function updateInvoiceStatusAction(
   revalidatePath("/invoices")
   revalidatePath("/dashboard")
   return true
+}
+
+// ============================================
+// 7. Mark invoice as sent + set email_sent_at (for mailto flow)
+// ============================================
+export async function markInvoiceSentAndEmailAction(
+  invoiceId: string
+): Promise<{ success: boolean; error?: string }> {
+  await requireAuth()
+  const supabase = await createClient()
+
+  const now = new Date().toISOString()
+  const { error } = await supabase
+    .from("invoices")
+    .update({
+      status: "sent",
+      issued_at: now,
+      email_sent_at: now,
+    })
+    .eq("id", invoiceId)
+
+  if (error) {
+    console.error("markInvoiceSentAndEmailAction error:", error)
+    return { success: false, error: "Failed to update invoice." }
+  }
+
+  revalidatePath("/invoices")
+  revalidatePath(`/invoices/${invoiceId}`)
+  revalidatePath("/dashboard")
+  return { success: true }
 }
