@@ -98,7 +98,11 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceWithClient[] }) {
                     : "—"}
                 </td>
                 <td className="px-4 py-3 text-center">
-                  <EmailStatusButton invoice={inv} clientEmail={inv.clients?.email ?? null} />
+                  <EmailStatusButton
+                    invoice={inv}
+                    clientName={inv.clientName}
+                    clientEmail={inv.clients?.email ?? null}
+                  />
                 </td>
                 <td className="px-4 py-3 text-center">
                   <DownloadButton invoice={inv} />
@@ -126,7 +130,11 @@ export function InvoicesTable({ invoices }: { invoices: InvoiceWithClient[] }) {
             <div className="flex items-center justify-between mt-2">
               <span className="text-ink font-medium text-sm">${inv.amount.toFixed(2)}</span>
               <div className="flex items-center gap-2">
-                <EmailStatusButton invoice={inv} clientEmail={inv.clients?.email ?? null} />
+                <EmailStatusButton
+                  invoice={inv}
+                  clientName={inv.clientName}
+                  clientEmail={inv.clients?.email ?? null}
+                />
                 <DownloadButton invoice={inv} />
               </div>
             </div>

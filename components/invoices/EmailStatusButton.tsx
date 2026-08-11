@@ -7,10 +7,11 @@ import type { Invoice } from "@/lib/db/invoices"
 
 interface EmailStatusButtonProps {
   invoice: Invoice
+  clientName?: string | null
   clientEmail?: string | null
 }
 
-export function EmailStatusButton({ invoice, clientEmail }: EmailStatusButtonProps) {
+export function EmailStatusButton({ invoice, clientName, clientEmail }: EmailStatusButtonProps) {
   const [isPending, startTransition] = useTransition()
 
   const isSent = !!invoice.email_sent_at
@@ -25,7 +26,7 @@ export function EmailStatusButton({ invoice, clientEmail }: EmailStatusButtonPro
     const subject = encodeURIComponent(`Invoice ${invoice.invoice_number}`)
     const pdfLink = `${window.location.origin}/api/invoices/${invoice.id}/pdf`
     const body = encodeURIComponent(
-      `Dear ${invoice.clientName || "Client"},\n\n` +
+      `Dear ${clientName || "Client"},\n\n` +
       `Please find your invoice ${invoice.invoice_number} attached.\n\n` +
       `You can download it here: ${pdfLink}\n\n` +
       `If you have any questions, please reply to this email.\n\n` +
